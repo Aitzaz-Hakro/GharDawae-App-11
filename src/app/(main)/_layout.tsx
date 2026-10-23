@@ -11,12 +11,7 @@ import { FontSizes, FontWeights } from "@/constants/theme";
  */
 export default function MainLayout() {
   const c = useColors();
-  const screenOptions = useMemo(
-    () => makeScreenOptions(c),
-    // Only the colours matter here; rebuilding on unrelated palette identity
-    // changes is cheap and keeps the object stable per scheme.
-    [c.background, c.border, c.primary, c.text],
-  );
+  const screenOptions = useMemo(() => makeScreenOptions(c), [c]);
 
   return <Stack screenOptions={screenOptions} />;
 }
