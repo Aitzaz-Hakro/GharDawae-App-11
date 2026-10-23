@@ -19,10 +19,13 @@ import {
   type Member,
 } from "@/lib/family";
 import { presetEmoji } from "@/constants/avatars";
+import { SyncBanner } from "@/components/SyncBanner";
+import { useSyncStatus } from "@/lib/use-sync-status";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const sync = useSyncStatus();
   const managerId = session?.user.id;
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -85,6 +88,8 @@ export default function HomeScreen() {
         <Text style={styles.searchPlaceholder}>🔍  Search medicines or records</Text>
       </Pressable>
 
+      <SyncBanner status={sync} />
+
       {error && <Text style={styles.error}>{error}</Text>}
 
       <FlatList
@@ -97,9 +102,19 @@ export default function HomeScreen() {
           <RefreshControl refreshing={false} onRefresh={load} />
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            No family members yet.{"\n"}Tap + to add your first one.
-          </Text>
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyTitle}>No family members yet</Text>
+            <Text style={styles.empty}>
+              Add the people you care for — Ammi, Baba, the kids — then photograph
+              their prescriptions as you go.
+            </Text>
+            <Pressable
+              style={styles.emptyButton}
+              onPress={() => router.push("/(main)/member/new")}
+            >
+              <Text style={styles.emptyButtonText}>Add your first member</Text>
+            </Pressable>
+          </View>
         }
         renderItem={({ item }) => (
           <Pressable
@@ -164,10 +179,20 @@ const styles = StyleSheet.create({
   empty: {
     textAlign: "center",
     color: "#60646C",
-    marginTop: 64,
+    marginTop: 8,
     fontSize: 15,
     lineHeight: 22,
   },
+  emptyWrap: { alignItems: "center", marginTop: 48, paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", marginBottom: 4 },
+  emptyButton: {
+    marginTop: 20,
+    backgroundColor: "#208AEF",
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  emptyButtonText: { color: "#fff", fontWeight: "600", fontSize: 15 },
   memberCard: { width: "33.33%", alignItems: "center", paddingVertical: 14 },
   avatar: {
     width: 72,

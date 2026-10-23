@@ -166,9 +166,19 @@ export default function MemberDetailScreen() {
           </View>
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            No prescriptions yet.{"\n"}Tap “Add record” to photograph one.
-          </Text>
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyTitle}>No prescriptions yet</Text>
+            <Text style={styles.empty}>
+              Photograph a slip after the next doctor visit and it will be here —
+              even with no internet.
+            </Text>
+            <Pressable
+              style={styles.emptyButton}
+              onPress={() => router.push(`/(main)/record/camera?memberId=${id}`)}
+            >
+              <Text style={styles.emptyButtonText}>Add a record</Text>
+            </Pressable>
+          </View>
         }
         renderItem={({ item }) => <RecordCard item={item} />}
       />
@@ -206,10 +216,20 @@ const styles = StyleSheet.create({
   empty: {
     textAlign: "center",
     color: "#60646C",
-    marginTop: 32,
+    marginTop: 8,
     fontSize: 15,
     lineHeight: 22,
   },
+  emptyWrap: { alignItems: "center", marginTop: 32, paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 18, fontWeight: "700" },
+  emptyButton: {
+    marginTop: 20,
+    backgroundColor: "#208AEF",
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  emptyButtonText: { color: "#fff", fontWeight: "600", fontSize: 15 },
   card: {
     flexDirection: "row",
     gap: 12,

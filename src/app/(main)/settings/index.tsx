@@ -14,11 +14,24 @@ import { Stack, useRouter } from "expo-router";
 import { signOut } from "@/lib/auth";
 import { useAuth } from "@/lib/auth-context";
 import { deleteAccountData } from "@/lib/account";
+import { useSyncStatus } from "@/lib/use-sync-status";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const sync = useSyncStatus();
   const [busy, setBusy] = useState(false);
+
+  // Plain-language backup state — "offline" is normal here, not a fault.
+  const backupSummary = (() => {
+    if (sync.state === "error") return "Having trouble — still trying";
+    if (sync.hasPendingUploads) {
+      return `${sync.pendingUploads} change${sync.pendingUploads === 1 ? "" : "s"} waiting`;
+    }
+    if (sync.state === "syncing") return "Backing up now…";
+    if (sync.state === "offline") return "Saved on this phone";
+    return sync.lastSyncedAt ? "Up to date" : "Connected";
+  })();
 
   const onDeleteAccount = useCallback(() => {
     Alert.alert(
@@ -72,6 +85,19 @@ export default function SettingsScreen() {
           <Text style={styles.rowValue}>{session?.user.email ?? "—"}</Text>
         </View>
 
+        <Text style={styles.sectionLabel}>Backup</Text>
+        <View style={styles.card}>
+          <Text style={styles.rowLabel}>Status</Text>
+          <Text style={styles.rowValue}>{backupSummary}</Text>
+          {sync.lastSyncedAt ? (
+            <Text style={styles.rowMeta}>
+              Last backed up {sync.lastSyncedAt.toLocaleString()}
+            </Text>
+          ) : null}
+          {sync.state === "error" && sync.message ? (
+            <Text style={styles.rowError}>{sync.message}</Text>
+          ) : null}
+        </View>
         <Pressable
           style={styles.linkRow}
           onPress={() => router.push("/(main)/settings/privacy")}
@@ -124,6 +150,8 @@ const styles = StyleSheet.create({
   },
   rowLabel: { fontSize: 13, color: "#60646C" },
   rowValue: { fontSize: 16, fontWeight: "600" },
+  rowMeta: { fontSize: 12, color: "#60646C", marginTop: 4 },
+  rowError: { fontSize: 12, color: "#C0392B", marginTop: 4 },
   linkRow: {
     flexDirection: "row",
     alignItems: "center",
