@@ -14,9 +14,10 @@ _Last updated: 2026-09-26_
 - [x] Repo structure (`/app`, `/db`, `/lib`, `/components`, `/docs` already exists)
 - [x] Supabase project created (Postgres + Auth + Storage)
 - [x] Schema + RLS pushed to Supabase (db/schema.sql, db/rls.sql — verified)
-- [ ] EAS dev build installed on real Android phone (verify it runs)
-- [ ] Expo Go working for quick iteration (blocked: "failed to download remote
-      update" — likely SDK 57 vs Expo Go version / network; retry --tunnel)
+- [x] EAS dev build installed on real Android phone (verify it runs)
+- [x] Standalone preview APK (no dev launcher, no Metro) — built 2026-10-09
+- [ ] Expo Go working for quick iteration (abandoned: SDK 57 vs Expo Go
+      mismatch; the dev-client + preview builds cover both needs)
 - **Done when:** blank app runs on your phone, Supabase reachable.
 
 ### M1 — Auth + Family · ~1.5 weeks (18h)
@@ -55,8 +56,12 @@ _Last updated: 2026-09-26_
   `docs/m3-photo-storage-setup.md`. Remaining: on-phone verification.
 
 ### M4 — Search · ~0.5 week (6h)
-- [ ] Search across members, records, medicines (local SQLite query)
+- [x] Search across members, records, medicines (local SQLite query)
 - **Done when:** typing a medicine/doctor/member name finds it fast, offline.
+- **Status:** ✅ built 2026-10-10. One screen, three result groups (family
+  members, records, medicines). Runs entirely against local SQLite, so it
+  works in airplane mode. LIKE terms are escaped (`%`, `_`, `\`) so a user
+  typing `%` gets a literal `%`, not every row.
 
 ### 🎨 Design Day (dedicated session) · after M3/M4, before M6
 - Build uses **default UI** until here (system fonts, simple layout, placeholder
@@ -67,19 +72,38 @@ _Last updated: 2026-09-26_
 - Recorded in `docs/architecture.md` §5.
 
 ### M5 — Security hardening · ~1 week (12h)
-- [ ] RLS policies on EVERY table (family-scoped) — verify cross-family isolation
-- [ ] Private Supabase Storage bucket, scoped photo access
-- [ ] Encryption verified end-to-end
-- [ ] Privacy policy + signup consent + data-delete (local + cloud)
+- [x] RLS policies on EVERY table (family-scoped) — verify cross-family isolation
+- [x] Private Supabase Storage bucket, scoped photo access
+- [x] Encryption verified end-to-end
+- [x] Privacy policy + signup consent + data-delete (local + cloud)
 - **Done when:** a second test account cannot see the first family's data.
+- **Status:** ✅ built 2026-10-10. Storage policies live in `db/storage.sql`
+  (**must be run once in the Supabase SQL Editor** — `docs/m3-photo-storage-setup.md`).
+  Signup is blocked until the policy checkbox is ticked; the policy text has one
+  source of truth in `src/constants/privacy.ts`. Delete-my-data is two
+  confirmations deep and deletes cloud *first*, so a network failure reports
+  "nothing was deleted" rather than leaving a half-erased account.
+  Cross-family isolation still needs the two-account on-device check
+  (`docs/m7-launch-pack.md` §8).
 
 ### M6 — Polish + test · ~1 week (12h)
 - [ ] **Offline 3-tap journey** tested on real phone in airplane mode
-- [ ] Empty states, error handling, loading states
+- [x] Empty states, error handling, loading states
 - [ ] Low-end Android test (Pakistan target device)
 - **Done when:** app feels solid, offline lookup is instant.
+- **Status:** in-app half built 2026-10-10 — sync banner on the family grid
+  ("N changes waiting to back up" / "Backing up…" / a sync problem line; being
+  offline is deliberately *not* styled as an error), richer empty states, and a
+  Settings screen showing backup state in plain language. The two device tests
+  are still open — they need the real phone.
 
 ### M7 — Launch prep → **Phase 10**
+- [x] `docs/privacy-policy.md` written (hosted copy for Play)
+- [x] `docs/m7-launch-pack.md` — Play Console, Data Safety, listing copy, beta plan
+- [x] `scripts/preflight.mjs` + `bun run preflight` — catches build-blocking
+  config mistakes without spending an EAS build credit
+- **Status:** built 2026-10-10. Account creation, hosting the policy URL,
+  screenshots and the on-device checklist are user tasks, listed in the pack.
 
 ## Rough Timeline
 - **Sum ≈ 9 weeks** of focused work (108h) — realistically **~10–12 weeks**

@@ -371,6 +371,116 @@ _First entry lands when we start M0/M1._
 - **ACTION REQUIRED (you):** run `db/storage.sql` in the Supabase SQL Editor.
 - **Not yet:** sweep orphaned objects in the bucket.
 
+### M4 — Offline search · 2026-10-10
+- **What it does:** one search box on the family grid finds family members,
+  prescriptions (by doctor, diagnosis or notes) and individual medicines, all
+  from local SQLite with no network.
+- **Files:**
+  - `src/lib/search.ts` — the query layer. Returns a `MemberHit | RecordHit |
+    MedicineHit` union; record hits carry a `matchedOn` field naming the column
+    that matched, so the result row can say *why* it matched.
+  - `src/app/(main)/search.tsx` — debounced (150 ms) screen, grouped results,
+    recent searches on focus.
+  - `src/lib/records.ts` — `recentDoctors()`, `medicineSuggestions()` (reused by
+    the record form's autocomplete).
+- **Key decisions:**
+  - **Search the local DB, never the API.** The product promise is that lookup
+    works with no internet; a remote search box would break exactly when it
+    matters.
+  - **Escape LIKE metacharacters.** `likeTerm()` escapes `\`, `%` and `_` and
+    every query uses `LIKE ? ESCAPE '\'`. Without this, typing `%` matches every
+    row and a medicine called `Vit_D` matches `Vit D`.
+  - **Two queries, not 1+N.** `loadMedicinesFor(ids)` takes the whole set of
+    record ids and runs one `IN (...)` query instead of a query per record.
+- **Gotchas:**
+  - `react-hooks/set-state-in-effect` rejects `setRunning(true)` in an effect
+    body when it would be synchronous on every render — it moved inside the
+    debounce timer, and the "no manager yet" case became an early return rather
+    than `setState(null)`.
+- **Not yet:** search history persistence; ranking (results are grouped, not
+  scored).
+
+### M5 — Privacy, consent and delete-my-data · 2026-10-10
+- **What it does:** completes the security-hardening milestone — a written
+  privacy policy, a required consent gate at signup, an in-app policy screen,
+  and a real account deletion path.
+- **Files:**
+  - `docs/privacy-policy.md` — the hosted copy Play requires (GitHub Pages).
+  - `src/constants/privacy.ts` — `PRIVACY_VERSION` + `PRIVACY_SECTIONS`: the one
+    source of truth, rendered by both the in-app screen and (in wording) the
+    hosted page.
+  - `src/app/(main)/settings/privacy.tsx` — renders the sections in-app.
+  - `src/app/(auth)/signup.tsx` — required checkbox; signup is blocked with an
+    Alert if it is unticked.
+  - `src/lib/account.ts` — `deleteCloudFamily()` (photos → medicines →
+    prescriptions → members → families, each query scoped by RLS),
+    `deleteLocalData()`, `deleteAccountData()`.
+  - `src/lib/family.ts` — `updateMember()`, `countPrescriptions()`,
+    `deleteMemberDeep()`; `src/lib/powersync/key.ts` — `clearDbEncryptionKey()`.
+  - `src/app/(main)/member/[id]/edit.tsx` — the edit-member screen M1 had
+    deferred, plus delete-member with the prescription count in the confirm.
+- **Key decisions:**
+  - **Cloud first, local second.** If the cloud delete fails, nothing has been
+    removed and the user is told "nothing was deleted". The reverse order would
+    destroy the only copy of the records the user just asked to keep.
+  - **Two confirmations before deleting an account.** One mis-tap must not
+    destroy medical records. The second dialog says there is no recovery.
+  - **Deletion goes through supabase-js, not PowerSync.** RLS then scopes each
+    delete to the owner's family, so a bug in the loop cannot reach another
+    family's rows.
+  - **Consent is a hard gate, not a nudge.** Storing health records for other
+    people is the sensitive part; an unticked box stops the signup.
+- **Not yet:** on-device verification that a second account cannot see the first
+  family's data (`docs/m7-launch-pack.md` §8).
+
+### M6 — Sync visibility and empty states · 2026-10-10
+- **What it does:** makes the backup state legible in plain language, and
+  replaces blank screens with copy that tells the user what to do next.
+- **Files:**
+  - `src/lib/use-sync-status.ts` — subscribes with `db.registerListener({
+    statusChanged })` and polls `db.getUploadQueueStats()`; returns `{ state:
+    "idle" | "syncing" | "offline" | "error", hasPendingUploads, pendingUploads,
+    lastSyncedAt, message }`.
+  - `src/components/SyncBanner.tsx` — renders nothing in the normal case.
+  - `src/app/(main)/index.tsx` — banner, tappable search bar, richer empty state.
+  - `src/app/(main)/settings/index.tsx` — backup summary in plain words
+    ("Saved on this phone" / "3 changes waiting" / "Up to date").
+- **Key decisions:**
+  - **Offline is not an error.** The app is offline-first; showing a red banner
+    whenever the network drops would train users to ignore the banner. Only a
+    genuine sync failure gets an error line.
+  - **The banner says nothing when there is nothing to say.** A permanently
+    visible "Synced ✓" is noise; it appears only when work is pending.
+  - **"Waiting to back up", not "pending upload".** The Settings summary is
+    written for a caretaker, not an engineer.
+- **Not yet:** the airplane-mode and low-end-Android passes — they need the real
+  phone.
+
+### M7 — Launch pack · 2026-10-10
+- **What it does:** the paperwork and the guardrails around shipping v1 — nothing
+  here is user-facing code.
+- **Files:**
+  - `docs/m7-launch-pack.md` — policy hosting, Play Console, Data Safety
+    answers, listing copy, beta plan, and the on-device checklist.
+  - `scripts/preflight.mjs` — `bun run preflight`.
+- **Key decisions:**
+  - **Preflight exists to save build credits.** EAS builds are limited, so the
+    cheap-but-expensive-to-discover mistakes (broken app.json, a preview profile
+    that would ship the dev launcher, missing env vars, a committed
+    service-role key, tsc/lint failures) are checked before a build is spent.
+  - **It checks the EAS production environment, not just `.env`.** Cloud builds
+    do not read the local `.env`; a build without EAS env vars installs fine and
+    then cannot log in. This check found the production environment genuinely
+    empty.
+- **Gotchas:**
+  - `eas env:list` rejects `--non-interactive`, and its default short format
+    prints nothing when stdout is a pipe. `--format long` prints names reliably.
+  - A helper that captures command output must decode stdout on the success path
+    too — an early version returned `output: ""` there and reported a false
+    failure on every run.
+- **ACTION REQUIRED (you):** enable GitHub Pages on `/docs` for the policy URL,
+  and replace the placeholder support email.
+
 ---
 
 ## 5. Design Approach
@@ -389,3 +499,11 @@ _Record notable "why we chose X" moments here as they happen._
   offline sync robustness. (See docs/07-tech-stack.md.)
 - **2026-09-26** Model A (manager-only login, members = data): simpler v1;
   schema leaves room for member logins later. (See docs/06-data-model.md.)
+- **2026-10-10** Search runs on local SQLite, never the API: the promise is that
+  lookup works with no internet.
+- **2026-10-10** Cloud-first account deletion: a network failure must leave the
+  user's data intact and say so, not half-erase it.
+- **2026-10-10** Photos use storage RLS, not PowerSync sync rules, as the
+  security boundary: PowerSync moves rows, not files.
+- **2026-10-10** Being offline is not presented as an error anywhere in the UI;
+  only a real sync failure is.
