@@ -64,11 +64,37 @@ _Last updated: 2026-09-26_
 - **Status:** 🔴
 
 ### PowerSync
-- **What:** a service that keeps local SQLite and cloud Postgres in sync
-  automatically (handles conflicts, offline queue).
-- **Why here:** hand-writing sync is bug-prone; PowerSync does it right.
-- **Learn:** PowerSync docs → "How it works" + React Native quickstart.
-- **Status:** 🔴 (new to almost everyone — we go slow here, it's M2)
+- **What:** a service + SDK that keeps a local SQLite database on the device in
+  sync with a cloud database (our Supabase Postgres). The app reads/writes local
+  SQLite instantly (works offline); PowerSync pushes/pulls changes in the
+  background when online.
+- **Why here:** hand-writing sync (conflict handling, offline queue) is very
+  bug-prone. PowerSync does it correctly. This IS the offline-first core.
+- **Parts to know:**
+  - **Client SDK** (`@powersync/react-native`) — the local DB + query hooks.
+  - **Cloud service** — hosted; connects to Supabase, needs an account.
+  - **Sync rules** — server-side config saying who syncs what (ours: a manager
+    syncs only their own family).
+  - **Connector** — small code file: provides auth token + uploads queued writes.
+- **Learn:** docs.powersync.com → React Native/Expo guide.
+- **Status:** 🔴 (new — go slow; this is M2's core)
+
+### op-sqlite
+- **What:** the actual SQLite engine PowerSync uses on React Native
+  (`@op-engineering/op-sqlite`). Replaces expo-sqlite — can't run both.
+- **Why here:** PowerSync requires it; it also supports SQLCipher encryption.
+- **Status:** 🔴
+
+### SQLCipher (via op-sqlite) · corrected
+- **What:** encrypted SQLite — the local DB file is unreadable without a key
+  (256-bit AES).
+- **How (corrected for our stack):** enable `"op-sqlite": { "sqlcipher": true }`
+  in package.json, then pass `sqliteOptions.encryptionKey` when creating the DB.
+  (NOT the expo-sqlite `useSQLCipher` plugin I first wrote — PowerSync owns the
+  SQLite layer.)
+- **Key storage:** the encryption key comes from `expo-secure-store` (device
+  Keystore/Keychain), never hard-coded.
+- **Status:** 🔴
 
 ---
 

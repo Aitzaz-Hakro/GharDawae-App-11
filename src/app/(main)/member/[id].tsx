@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 
-import { supabase } from "@/lib/supabase";
+import { getDatabase } from "@/lib/powersync/db";
 import { presetEmoji } from "@/constants/avatars";
 import type { Member } from "@/lib/family";
 
@@ -17,13 +17,12 @@ export default function MemberDetailScreen() {
     if (!id) return;
     setError(null);
     try {
-      const { data, error } = await supabase
-        .from("members")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (error) throw error;
-      setMember(data);
+      const db = await getDatabase();
+      const row = await db.getOptional<Member>(
+        "SELECT * FROM members WHERE id = ?",
+        [id],
+      );
+      setMember(row);
     } catch (e) {
       setError((e as Error).message);
     } finally {

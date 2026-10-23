@@ -13,10 +13,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
 import { addMember, getOrCreateFamily } from "@/lib/family";
+import { useAuth } from "@/lib/auth-context";
 import { AVATAR_PRESETS, RELATIONS } from "@/constants/avatars";
 
 export default function NewMemberScreen() {
   const router = useRouter();
+  const { session } = useAuth();
   const [name, setName] = useState("");
   const [relation, setRelation] = useState<string | null>(null);
   const [avatarId, setAvatarId] = useState(AVATAR_PRESETS[0].id);
@@ -31,7 +33,7 @@ export default function NewMemberScreen() {
     }
     setBusy(true);
     try {
-      const fam = await getOrCreateFamily();
+      const fam = await getOrCreateFamily(session?.user.id ?? "local");
       await addMember(fam.id, {
         name: name.trim(),
         relation: relation ?? undefined,

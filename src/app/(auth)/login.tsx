@@ -10,11 +10,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { Link } from "expo-router";
 import { signIn } from "@/lib/auth";
 
 export default function LoginScreen() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -42,7 +41,7 @@ export default function LoginScreen() {
     >
       <View style={styles.inner}>
         <Text style={styles.title}>Ghar Dawae</Text>
-        <Text style={styles.subtitle}>Your family's medicines, always with you</Text>
+        <Text style={styles.subtitle}>Your family&apos;s medicines, always with you</Text>
 
         <TextInput
           style={styles.input}
