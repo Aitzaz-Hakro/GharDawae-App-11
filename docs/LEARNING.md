@@ -152,6 +152,26 @@ we use it in code.)_
 - **Learn:** Expo docs → "Expo Router". Maps closely to Next.js routing.
 - **Status:** 🟡 (Next.js knowledge transfers directly)
 
+### EXPO_PUBLIC_ env vars · M0
+- **What:** env vars prefixed `EXPO_PUBLIC_` are inlined into the app bundle at
+  build time and readable via `process.env.EXPO_PUBLIC_X`. Without the prefix
+  they're undefined in the app.
+- **Why here:** feed Supabase URL + anon key into `src/lib/supabase.ts`.
+- **Note:** these are PUBLIC (shipped in the app). Never put secret keys here —
+  the Supabase anon key is safe by design; RLS is what protects data.
+- **Status:** 🟢 (same idea as Next.js `NEXT_PUBLIC_`)
+
+### AsyncStorage · M0
+- **What:** simple key-value storage on the device (like localStorage for RN).
+- **Why here:** Supabase stores the login session here so the manager stays
+  logged in across app restarts (needed for instant offline open).
+- **Status:** 🟡
+
+### Supabase auth session persistence · M0
+- **What:** `persistSession` + a `storage` adapter keep the user logged in;
+  `detectSessionInUrl: false` because mobile has no URL bar.
+- **Status:** 🟢
+
 - [ ] Camera access (expo-camera / image-picker)
 - [ ] File system (saving photos on device)
 - [ ] State management (how data flows through the app)

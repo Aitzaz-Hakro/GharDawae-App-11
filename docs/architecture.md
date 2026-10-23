@@ -97,6 +97,27 @@ _First entry lands when we start M0/M1._
 - **Verify still pending:** EAS dev build on real Android phone (needs your
   Expo account login — interactive).
 
+### Supabase Client + Cloud Schema · Milestone M0→M1 · 2026-09-26
+- **What it does:** connects the app to Supabase (auth + cloud DB) and defines
+  the cloud Postgres schema + security.
+- **Files touched:**
+  - `src/lib/supabase.ts` — Supabase client, session persisted in AsyncStorage.
+  - `db/schema.sql` — Postgres tables: families, members, prescriptions, medicines.
+  - `db/rls.sql` — Row-Level Security policies (family-scoped) + helper functions.
+  - deps added: `@supabase/supabase-js`, `@react-native-async-storage/async-storage`,
+    `react-native-url-polyfill`.
+- **Key decisions:**
+  - Config via `EXPO_PUBLIC_*` env vars; anon key is public-by-design, real
+    protection = RLS.
+  - Session persisted (AsyncStorage) + `detectSessionInUrl: false` (no URL bar
+    on mobile) → supports "open straight to family grid" offline flow.
+  - RLS uses `security definer` helper functions (`owns_family`,
+    `owns_member`, `owns_prescription`) that walk child → family → auth.uid().
+- **ACTION REQUIRED (you):** run `db/schema.sql` then `db/rls.sql` in Supabase
+  SQL Editor. Order matters (schema first).
+- **Gotchas / learned:** `EXPO_PUBLIC_` prefix required for env vars to reach
+  the app bundle; without it `process.env.X` is undefined at runtime.
+
 ---
 
 ## 5. Design Approach
