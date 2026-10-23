@@ -48,7 +48,7 @@ export async function getMyFamily(): Promise<Family | null> {
   );
 }
 
-/** Create the manager's family locally. */
+/** Create the manager's family locally. managerUserId must be a real auth uuid. */
 export async function createFamily(
   name: string,
   managerUserId: string,
@@ -68,7 +68,11 @@ export async function createFamily(
   return fam;
 }
 
-/** Ensure a family exists; create a default one if missing. */
+/**
+ * Ensure a family exists for a signed-in manager; create a default one if
+ * missing. managerUserId MUST be the real auth user id — never a placeholder,
+ * because it syncs to a Postgres `uuid` column and scopes the sync rules.
+ */
 export async function getOrCreateFamily(
   managerUserId: string,
   defaultName = "My Family",
@@ -76,6 +80,31 @@ export async function getOrCreateFamily(
   const existing = await getMyFamily();
   if (existing) return existing;
   return createFamily(defaultName, managerUserId);
+}
+
+/**
+ * Delete any family rows that don't belong to the given manager (e.g. ones
+ * created with a placeholder id before login). Local cleanup helper.
+ */
+export async function deleteFamiliesNotOwnedBy(
+  managerUserId: string,
+): Promise<void> {
+  const db = await getDatabase();
+  await db.execute("DELETE FROM families WHERE manager_user_id != ?", [
+    managerUserId,
+  ]);
+}
+
+/**
+ * Resolve the signed-in manager's family: purge stale placeholder rows, then
+ * return the existing family or create a default one. Requires a real auth id.
+ */
+export async function resolveFamily(
+  managerUserId: string,
+  defaultName = "My Family",
+): Promise<Family> {
+  await deleteFamiliesNotOwnedBy(managerUserId);
+  return getOrCreateFamily(managerUserId, defaultName);
 }
 
 export async function listMembers(familyId: string): Promise<Member[]> {

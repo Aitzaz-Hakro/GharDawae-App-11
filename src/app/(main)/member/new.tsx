@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
-import { addMember, getOrCreateFamily } from "@/lib/family";
+import { addMember, resolveFamily } from "@/lib/family";
 import { useAuth } from "@/lib/auth-context";
 import { AVATAR_PRESETS, RELATIONS } from "@/constants/avatars";
 
@@ -31,9 +31,14 @@ export default function NewMemberScreen() {
       Alert.alert("Name required", "Enter the member's name.");
       return;
     }
+    const managerId = session?.user.id;
+    if (!managerId) {
+      Alert.alert("Not signed in", "Please log in again.");
+      return;
+    }
     setBusy(true);
     try {
-      const fam = await getOrCreateFamily(session?.user.id ?? "local");
+      const fam = await resolveFamily(managerId);
       await addMember(fam.id, {
         name: name.trim(),
         relation: relation ?? undefined,
