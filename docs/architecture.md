@@ -179,6 +179,38 @@ _First entry lands when we start M0/M1._
   keystore generation. Run:
   `npx eas-cli@latest build --platform android --profile development`
 
+### M2 Step 1 — Local Encrypted SQLite (PowerSync) · 2026-10-08
+- **What it does:** app now reads/writes a **local encrypted SQLite DB** — fully
+  offline. Cloud sync added in Step 2.
+- **Files:**
+  - `src/lib/powersync/schema.ts` — PowerSync client Schema (Tables: families,
+    members, prescriptions, medicines). `id` auto-created by PowerSync.
+  - `src/lib/powersync/key.ts` — 256-bit key generated once (expo-crypto),
+    stored in `expo-secure-store`.
+  - `src/lib/powersync/db.ts` — single `PowerSyncDatabase` instance with
+    `sqliteOptions.encryptionKey`.
+  - `src/lib/family.ts` — rewritten: all reads/writes now local SQL (was Supabase).
+  - screens updated: home, member/new, member/[id] use local DB.
+- **PLAN CORRECTION vs docs/07-tech-stack.md:** PowerSync uses
+  **`@op-engineering/op-sqlite`**, NOT `expo-sqlite`. Can't run both. SQLCipher is
+  enabled via `package.json`: `"op-sqlite": { "sqlcipher": true }` — NOT the
+  expo-sqlite `useSQLCipher` plugin originally planned. Encryption still achieved.
+- **Key decisions:**
+  - Key from expo-secure-store (Keystore/Keychain); never in AsyncStorage/code.
+  - Reads are direct SQL (`db.getOptional`, `db.getAll`); writes via `db.execute`.
+  - Local UUIDs generated client-side for row ids (no server round-trip).
+  - Interim: `manager_user_id = session.user.id ?? "local"` until sync uses real
+    auth.
+- **Gotchas / learned:**
+  - op-sqlite + SQLCipher needs a **native rebuild** (new dev build) — the
+    currently-installed dev build lacks the SQLCipher native module.
+  - SQLCipher is NOT supported in Expo Go — dev build required.
+  - Removed unused Expo template theme components (`themed-text/view`,
+    `collapsible`, `use-theme`, `use-color-scheme`); fixed lint (escaped
+    apostrophes, unused var, react-compiler manual-memoization warning).
+- **Verify pending (needs rebuilt dev build on phone):** add member offline,
+  kill + reopen app, data persists; airplane mode works.
+
 ---
 
 ## 5. Design Approach

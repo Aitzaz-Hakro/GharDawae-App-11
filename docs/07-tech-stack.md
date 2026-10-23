@@ -17,7 +17,7 @@ _Last updated: 2026-09-26_
 |-------|--------|-----|
 | **Framework** | **Expo (managed) + dev build** | Reuses React skill; no emulator (test on real phone); EAS cloud builds; avoids bare-RN native config hell |
 | **Language** | TypeScript | Type safety on a relational schema |
-| **Local DB** | **SQLite** (`expo-sqlite`) | Relational schema fits (Family→Member→Prescription→Medicine); offline source of truth |
+| **Local DB** | **SQLite via PowerSync** (`@op-engineering/op-sqlite`) | Relational schema fits (Family→Member→Prescription→Medicine); offline source of truth. **Corrected in M2:** PowerSync bundles its own SQLite (op-sqlite), not expo-sqlite. |
 | **Backend** | **Supabase** | Postgres (1:1 with our schema), built-in auth, file storage; free tier fine for 100 families |
 | **Offline↔cloud sync** | **PowerSync + Supabase** | Purpose-built offline-first sync for Postgres; robust (hand-rolled sync is bug-prone) |
 | **Photo storage** | Device filesystem (local) + **Supabase Storage** (backup) | Offline-first, cloud-backed |
