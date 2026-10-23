@@ -1,13 +1,11 @@
 // The ONLY place that talks to the model provider.
 //
-// API details are still pending from the team. When they arrive, change this
-// file only: every screen calls extractPrescription / sendToAssistant, and
-// those call requestStructured below. Keep the exported shape stable.
+// Provider: OpenAI Chat Completions (vision-capable models).
 //
 // Env:
-//   EXPO_PUBLIC_GEMINI_API_KEY   required for live calls
-//   EXPO_PUBLIC_GEMINI_MODEL     default "gemini-2.5-flash"
-//   EXPO_PUBLIC_GEMINI_ENDPOINT  default Interactions API
+//   EXPO_PUBLIC_OPENAI_API_KEY   required for live calls
+//   EXPO_PUBLIC_OPENAI_MODEL     default "gpt-4o-mini" ("gpt-4o" also works)
+//   EXPO_PUBLIC_OPENAI_ENDPOINT  optional override
 //
 // Note: EXPO_PUBLIC_* values are embedded in the JS bundle. Use a
 // demo-scoped key with a quota and rotate it after the event.
@@ -19,13 +17,11 @@ import { AIError } from "./types";
 const TIMEOUT_MS = 45_000;
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 
-const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY?.trim();
-const MODEL = (
-  process.env.EXPO_PUBLIC_GEMINI_MODEL || "gemini-2.5-flash"
-).trim();
+const API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY?.trim();
+const MODEL = (process.env.EXPO_PUBLIC_OPENAI_MODEL || "gpt-4o-mini").trim();
 const ENDPOINT = (
-  process.env.EXPO_PUBLIC_GEMINI_ENDPOINT ||
-  "https://generativelanguage.googleapis.com/v1beta/interactions"
+  process.env.EXPO_PUBLIC_OPENAI_ENDPOINT ||
+  "https://api.openai.com/v1/chat/completions"
 ).trim();
 
 export type JsonSchema = Record<string, unknown>;
@@ -57,7 +53,7 @@ function mimeFromUri(uri: string): string {
   }
 }
 
-async function buildImagePart(uri: string): Promise<Record<string, unknown>> {
+async function buildImageDataUrl(uri: string): Promise<string> {
   const file = new File(uri);
   if (file.size > MAX_IMAGE_BYTES) {
     throw new AIError(
@@ -66,65 +62,30 @@ async function buildImagePart(uri: string): Promise<Record<string, unknown>> {
     );
   }
   const data = await file.base64();
-  const mime = file.type && file.type.startsWith("image/") ? file.type : mimeFromUri(uri);
-  return { type: "image", data, mime_type: mime };
+  const mime =
+    file.type && file.type.startsWith("image/") ? file.type : mimeFromUri(uri);
+  return `data:${mime};base64,${data}`;
 }
 
-/** Pull the JSON text out of either the Interactions or legacy response shape. */
+/** Pull the text out of an OpenAI chat completion response. */
 function extractText(payload: unknown): string {
   if (!payload || typeof payload !== "object") return "";
-  const root = payload as Record<string, unknown>;
-  const node =
-    root.interaction && typeof root.interaction === "object"
-      ? (root.interaction as Record<string, unknown>)
-      : root;
+  const choices = (payload as { choices?: unknown }).choices;
+  if (!Array.isArray(choices) || choices.length === 0) return "";
+  const message = (choices[0] as { message?: { content?: unknown } })?.message
+    ?.content;
 
-  if (typeof node.output_text === "string") return node.output_text;
-
-  if (Array.isArray(node.outputs)) {
-    const first = node.outputs[0] as Record<string, unknown> | undefined;
-    if (first && typeof first.text === "string") return first.text;
-    const content = first?.content;
-    if (Array.isArray(content)) {
-      const text = content
-        .map((p) =>
-          p && typeof p === "object" && typeof (p as { text?: unknown }).text === "string"
-            ? (p as { text: string }).text
-            : "",
-        )
-        .join("");
-      if (text) return text;
-    }
+  if (typeof message === "string") return message;
+  if (Array.isArray(message)) {
+    return message
+      .map((part) =>
+        part && typeof part === "object" && typeof (part as { text?: unknown }).text === "string"
+          ? (part as { text: string }).text
+          : "",
+      )
+      .join("");
   }
-
-  const candidates = node.candidates;
-  if (Array.isArray(candidates)) {
-    const parts = (candidates[0] as { content?: { parts?: unknown[] } } | undefined)
-      ?.content?.parts;
-    if (Array.isArray(parts)) {
-      return parts
-        .map((p) =>
-          p && typeof p === "object" && typeof (p as { text?: unknown }).text === "string"
-            ? (p as { text: string }).text
-            : "",
-        )
-        .join("");
-    }
-  }
-
   return "";
-}
-
-async function post(body: unknown, signal: AbortSignal): Promise<Response> {
-  return fetch(ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": API_KEY ?? "",
-    },
-    body: JSON.stringify(body),
-    signal,
-  });
 }
 
 function delay(ms: number): Promise<void> {
@@ -134,8 +95,8 @@ function delay(ms: number): Promise<void> {
 /**
  * Send one structured-output request and return the parsed JSON value.
  *
- * This is the seam: if the team's endpoint uses a different body shape,
- * rewrite only this function. The rest of the app is already typed.
+ * The app's prompts already ask for JSON, so OpenAI's `json_object` response
+ * format is enough here; the normalizer still validates every field.
  */
 export async function requestStructured(
   args: StructuredRequest,
@@ -143,25 +104,31 @@ export async function requestStructured(
   if (!isAiConfigured()) {
     throw new AIError(
       "not_configured",
-      "AI is not configured yet. Add EXPO_PUBLIC_GEMINI_API_KEY to .env and restart Metro.",
+      "AI is not configured yet. Add EXPO_PUBLIC_OPENAI_API_KEY to .env and restart Metro.",
     );
   }
 
-  const parts: Record<string, unknown>[] = [
-    { type: "text", text: `${args.instructions}\n\n${args.text}` },
+  const userContent: Record<string, unknown>[] = [
+    { type: "text", text: args.text },
   ];
   if (args.imageUri) {
-    parts.push(await buildImagePart(args.imageUri));
+    userContent.push({
+      type: "image_url",
+      image_url: { url: await buildImageDataUrl(args.imageUri) },
+    });
   }
 
   const body = {
     model: MODEL,
-    input: parts,
-    response_format: {
-      type: "text",
-      mime_type: "application/json",
-      schema: args.schema,
-    },
+    messages: [
+      {
+        role: "system",
+        content: `${args.instructions}\n\nReturn valid JSON only. No markdown, no commentary outside the JSON.`,
+      },
+      { role: "user", content: userContent },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.2,
   };
 
   let lastError: AIError | null = null;
@@ -170,7 +137,15 @@ export async function requestStructured(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const response = await post(body, controller.signal);
+      const response = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${API_KEY ?? ""}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         const detail = await response.text().catch(() => "");
@@ -183,6 +158,11 @@ export async function requestStructured(
           lastError = new AIError(
             "api",
             `The AI service is unavailable (${response.status}).`,
+          );
+        } else if (response.status === 401) {
+          throw new AIError(
+            "not_configured",
+            "The OpenAI API key was rejected. Check EXPO_PUBLIC_OPENAI_API_KEY and restart Metro.",
           );
         } else {
           throw new AIError(

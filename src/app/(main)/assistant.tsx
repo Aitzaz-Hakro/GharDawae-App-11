@@ -20,7 +20,7 @@ import {
   setAudioModeAsync,
   useAudioRecorder,
   useAudioRecorderState,
-} from "expo-audio";
+} from "@/lib/audio";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
