@@ -211,6 +211,33 @@ _First entry lands when we start M0/M1._
 - **Verify pending (needs rebuilt dev build on phone):** add member offline,
   kill + reopen app, data persists; airplane mode works.
 
+### M2 Step 2 — Cloud Sync (PowerSync <-> Supabase) · 2026-10-08
+- **What it does:** local SQLite now syncs to Supabase cloud (upload + download),
+  scoped per manager family. Offline still works; sync happens in background.
+- **Files:**
+  - `src/lib/powersync/connector.ts` — `SupabaseConnector`:
+    `fetchCredentials()` (returns PowerSync URL + Supabase access token),
+    `uploadData()` (pushes PUT/PATCH/DELETE to Supabase via
+    `getNextCrudTransaction`, drops fatal-error batches to avoid a stuck queue).
+  - `src/lib/powersync/sync.ts` — `usePowerSyncSync()` hook: connect on login,
+    disconnect on sign-out; safe offline.
+  - `src/app/_layout.tsx` — mounts the sync hook at root.
+  - `docs/m2-powersync-sync-rules.yaml` — family-scoped sync streams (edition 3).
+  - `docs/m2-powersync-setup.md` — the dashboard setup walkthrough.
+- **Key decisions:**
+  - Sync scoping = sync rules (PowerSync connects as `powersync_role` with
+    `bypassrls`, so rules — not RLS — decide what each manager receives).
+    RLS still guards direct Supabase API access from the app. Both matter.
+  - Upload uses `supabase.from(table).upsert/update/delete` — RLS applies to
+    these writes as the logged-in user.
+  - Fatal Postgres errors (`22xxx`/`23xxx`/`42501`) → drop batch (complete) so the
+    upload queue can't stall forever; transient errors rethrow → auto-retry.
+- **ACTION REQUIRED (you):** follow `docs/m2-powersync-setup.md` (create PowerSync
+  account, connect Supabase, deploy sync rules, set POWERSYNC_URL).
+- **Gotchas:** empty `EXPO_PUBLIC_POWERSYNC_URL` → sync silently won't connect.
+  Restart Metro after editing `.env`. Same rebuild as Step 1 covers the native
+  modules.
+
 ---
 
 ## 5. Design Approach
