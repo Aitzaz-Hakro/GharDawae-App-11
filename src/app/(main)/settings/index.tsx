@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,14 +11,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
+import { useColors, type ThemePalette } from "@/constants/useColors";
 import { signOut } from "@/lib/auth";
 import { useAuth } from "@/lib/auth-context";
 import { deleteAccountData } from "@/lib/account";
 import { useSyncStatus } from "@/lib/use-sync-status";
+import { FontSizes, FontWeights, Ledger, Radii } from "@/constants/theme";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const sync = useSyncStatus();
   const [busy, setBusy] = useState(false);
 
@@ -121,7 +125,7 @@ export default function SettingsScreen() {
           disabled={busy}
         >
           {busy ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={c.onPrimary} />
           ) : (
             <Text style={styles.dangerText}>Delete my data</Text>
           )}
@@ -131,44 +135,65 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+const makeStyles = (c: ThemePalette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
   content: { padding: 20, paddingBottom: 48 },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: FontSizes.caption,
     fontWeight: "700",
-    color: "#60646C",
+    color: c.textSecondary,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
-    marginTop: 24,
+    marginTop: 26,
     marginBottom: 8,
   },
   card: {
-    borderRadius: 12,
-    backgroundColor: "#F0F0F3",
+    borderRadius: Radii.md,
+    backgroundColor: c.surface,
     padding: 16,
     gap: 4,
   },
-  rowLabel: { fontSize: 13, color: "#60646C" },
-  rowValue: { fontSize: 16, fontWeight: "600" },
-  rowMeta: { fontSize: 12, color: "#60646C", marginTop: 4 },
-  rowError: { fontSize: 12, color: "#C0392B", marginTop: 4 },
+  rowLabel: { fontSize: FontSizes.label, color: c.textSecondary },
+  rowValue: {
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.heading,
+    color: c.text,
+  },
+  rowMeta: { fontSize: FontSizes.caption, color: c.textSecondary, marginTop: 4 },
+  rowError: { fontSize: FontSizes.caption, color: c.danger, marginTop: 4 },
   linkRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E3E5E9",
+    minHeight: 52,
+    borderBottomWidth: Ledger.rule,
+    borderBottomColor: c.border,
   },
-  linkText: { fontSize: 16, color: "#208AEF", fontWeight: "600" },
-  chevron: { fontSize: 22, color: "#9096A0" },
-  warningBody: { fontSize: 14, color: "#60646C", lineHeight: 20, marginBottom: 16 },
+  linkText: {
+    fontSize: FontSizes.body,
+    color: c.primary,
+    fontWeight: FontWeights.heading,
+  },
+  chevron: { fontSize: 22, color: c.textSecondary },
+  warningBody: {
+    fontSize: FontSizes.label,
+    color: c.textSecondary,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
   dangerButton: {
-    backgroundColor: "#C0392B",
-    borderRadius: 10,
+    backgroundColor: c.danger,
+    borderRadius: Radii.md,
     paddingVertical: 14,
+    minHeight: 48,
+    justifyContent: "center",
     alignItems: "center",
   },
   buttonDisabled: { opacity: 0.6 },
-  dangerText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  dangerText: {
+    color: "#FFFFFF",
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.heading,
+  },
 });

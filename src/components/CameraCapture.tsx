@@ -6,7 +6,7 @@
 // Only one camera preview may be active at a time, so the preview is mounted
 // only while `visible` and only after permissions resolve.
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +19,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+
+import { useColors, type ThemePalette } from "@/constants/useColors";
+import { FontSizes, FontWeights, Radii } from "@/constants/theme";
 
 export type CameraCaptureProps = {
   visible: boolean;
@@ -38,6 +41,8 @@ export function CameraCapture({
   const [permission, requestPermission] = useCameraPermissions();
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
 
   const close = useCallback(() => {
     setReady(false);
@@ -82,7 +87,7 @@ export function CameraCapture({
       <View style={styles.container}>
         {!permission ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color={c.primary} />
           </View>
         ) : !permission.granted ? (
           <SafeAreaView style={styles.permissionWrap}>
@@ -135,7 +140,7 @@ export function CameraCapture({
                   disabled={!ready || busy}
                 >
                   {busy ? (
-                    <ActivityIndicator color="#208AEF" />
+                    <ActivityIndicator color={c.primary} />
                   ) : (
                     <View style={styles.shutterInner} />
                   )}
@@ -153,90 +158,113 @@ export function CameraCapture({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000" },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#000",
-  },
-  permissionWrap: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-    backgroundColor: "#fff",
-  },
-  permissionText: { fontSize: 15, color: "#60646C", textAlign: "center" },
-  button: {
-    backgroundColor: "#208AEF",
-    borderRadius: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    marginTop: 20,
-  },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  textButton: { marginTop: 14, padding: 8 },
-  textButtonText: { color: "#208AEF", fontWeight: "600" },
-  textButtonMuted: { color: "#60646C", fontWeight: "600" },
-  overlay: { flex: 1, justifyContent: "space-between" },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  topButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  topButtonText: { color: "#fff", fontSize: 18, fontWeight: "600" },
-  topTitle: { color: "#fff", fontWeight: "600", fontSize: 16 },
-  hintWrap: { alignItems: "center" },
-  hint: {
-    color: "#fff",
-    backgroundColor: "rgba(0,0,0,0.45)",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    overflow: "hidden",
-    fontSize: 14,
-  },
-  controls: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-  },
-  sideButton: {
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  sideText: { color: "#fff", fontWeight: "600" },
-  shutter: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 4,
-    borderColor: "rgba(255,255,255,0.5)",
-  },
-  shutterDisabled: { opacity: 0.6 },
-  shutterInner: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: "#fff",
-  },
-});
+const makeStyles = (c: ThemePalette) =>
+  StyleSheet.create({
+    // The camera chrome stays dark in both themes on purpose: the preview is
+    // the content, and a white frame around it would glare.
+    container: { flex: 1, backgroundColor: "#000" },
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#000",
+    },
+    permissionWrap: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+      backgroundColor: c.background,
+    },
+    permissionText: {
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+      textAlign: "center",
+      lineHeight: 24,
+    },
+    button: {
+      backgroundColor: c.primary,
+      borderRadius: Radii.md,
+      paddingVertical: 14,
+      paddingHorizontal: 28,
+      minHeight: 48,
+      justifyContent: "center",
+      marginTop: 20,
+    },
+    buttonText: {
+      color: c.onPrimary,
+      fontSize: FontSizes.body,
+      fontWeight: FontWeights.heading,
+    },
+    textButton: { marginTop: 8, padding: 10, minHeight: 44 },
+    textButtonText: {
+      color: c.primary,
+      fontWeight: FontWeights.heading,
+      fontSize: FontSizes.body,
+    },
+    textButtonMuted: {
+      color: c.textSecondary,
+      fontWeight: FontWeights.heading,
+      fontSize: FontSizes.body,
+    },
+    overlay: { flex: 1, justifyContent: "space-between" },
+    topBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingTop: 8,
+    },
+    topButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    topButtonText: { color: "#FFFFFF", fontSize: 18, fontWeight: "600" },
+    topTitle: { color: "#FFFFFF", fontWeight: "600", fontSize: FontSizes.body },
+    hintWrap: { alignItems: "center" },
+    hint: {
+      color: "#FFFFFF",
+      backgroundColor: "rgba(0,0,0,0.55)",
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: Radii.pill,
+      overflow: "hidden",
+      fontSize: FontSizes.label,
+    },
+    controls: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 24,
+      paddingBottom: 20,
+    },
+    sideButton: {
+      backgroundColor: "rgba(255,255,255,0.18)",
+      borderRadius: Radii.pill,
+      paddingHorizontal: 16,
+      minHeight: 44,
+      justifyContent: "center",
+    },
+    sideText: { color: "#FFFFFF", fontWeight: "600", fontSize: FontSizes.label },
+    shutter: {
+      width: 78,
+      height: 78,
+      borderRadius: 39,
+      backgroundColor: "#FFFFFF",
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 4,
+      borderColor: "rgba(255,255,255,0.5)",
+    },
+    shutterDisabled: { opacity: 0.6 },
+    shutterInner: {
+      width: 58,
+      height: 58,
+      borderRadius: 29,
+      backgroundColor: "#FFFFFF",
+    },
+  });

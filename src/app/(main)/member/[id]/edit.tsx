@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 
+import { useColors, type ThemePalette } from "@/constants/useColors";
 import {
   countPrescriptions,
   deleteMemberDeep,
@@ -22,18 +23,26 @@ import {
 } from "@/lib/family";
 import { getDatabase } from "@/lib/powersync/db";
 import { deletePhoto } from "@/lib/photo";
-import { AVATAR_PRESETS, RELATIONS } from "@/constants/avatars";
+import {
+  AVATAR_TINTS,
+  RELATIONS,
+  avatarTintForStoredValue,
+} from "@/constants/avatars";
+import { Avatar } from "@/components/Avatar";
+import { FontSizes, FontWeights, Radii } from "@/constants/theme";
 
 export default function EditMemberScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const [name, setName] = useState("");
   const [relation, setRelation] = useState<string | null>(null);
-  const [avatarId, setAvatarId] = useState(AVATAR_PRESETS[0].id);
+  const [avatarId, setAvatarId] = useState(AVATAR_TINTS[0].id);
   const [age, setAge] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "other" | null>(null);
 
@@ -52,7 +61,11 @@ export default function EditMemberScreen() {
           setMember(row);
           setName(row.name);
           setRelation(row.relation);
-          setAvatarId(row.avatar_type === "preset" ? row.avatar_value ?? AVATAR_PRESETS[0].id : AVATAR_PRESETS[0].id);
+          setAvatarId(
+            row.avatar_type === "preset"
+              ? avatarTintForStoredValue(row.avatar_value).id
+              : AVATAR_TINTS[0].id,
+          );
           setAge(row.age != null ? String(row.age) : "");
           setGender(row.gender);
         }
@@ -147,15 +160,24 @@ export default function EditMemberScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.label}>Avatar</Text>
+          <Text style={styles.label}>Colour</Text>
           <View style={styles.avatarRow}>
-            {AVATAR_PRESETS.map((a) => (
+            {AVATAR_TINTS.map((a) => (
               <Pressable
                 key={a.id}
-                style={[styles.avatarChip, avatarId === a.id && styles.avatarChipActive]}
+                style={styles.avatarChip}
                 onPress={() => setAvatarId(a.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`Avatar colour ${a.id}`}
+                accessibilityState={{ selected: avatarId === a.id }}
               >
-                <Text style={styles.avatarEmoji}>{a.emoji}</Text>
+                <Avatar
+                  name={name || member?.name}
+                  value={a.id}
+                  size={48}
+                  selected={avatarId === a.id}
+                  ringColor={c.primary}
+                />
               </Pressable>
             ))}
           </View>
@@ -213,7 +235,7 @@ export default function EditMemberScreen() {
             disabled={busy}
           >
             {busy ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={c.onPrimary} />
             ) : (
               <Text style={styles.buttonText}>Save changes</Text>
             )}
@@ -228,53 +250,80 @@ export default function EditMemberScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+const makeStyles = (c: ThemePalette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
   flex: { flex: 1 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  error: { color: "#C0392B" },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+    backgroundColor: c.background,
+  },
+  error: { color: c.danger },
   content: { padding: 20, gap: 8, paddingBottom: 48 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 14 },
+  label: {
+    fontSize: FontSizes.label,
+    fontWeight: FontWeights.heading,
+    marginTop: 14,
+    color: c.text,
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#D0D3D9",
-    borderRadius: 10,
+    borderColor: c.border,
+    borderRadius: Radii.md,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+    minHeight: 48,
+    fontSize: FontSizes.body,
+    color: c.text,
   },
   avatarRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   avatarChip: {
     width: 52,
     height: 52,
-    borderRadius: 26,
-    backgroundColor: "#F0F0F3",
-    justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
+    justifyContent: "center",
   },
-  avatarChipActive: { borderColor: "#208AEF" },
-  avatarEmoji: { fontSize: 26 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F0F0F3",
+    minHeight: 44,
+    justifyContent: "center",
+    borderRadius: Radii.pill,
+    backgroundColor: c.surface,
   },
-  chipActive: { backgroundColor: "#208AEF" },
-  chipText: { color: "#333", textTransform: "capitalize" },
-  chipTextActive: { color: "#fff", fontWeight: "600" },
+  chipActive: { backgroundColor: c.primary },
+  chipText: {
+    color: c.text,
+    fontSize: FontSizes.label,
+    textTransform: "capitalize",
+  },
+  chipTextActive: { color: c.onPrimary, fontWeight: "600" },
   button: {
-    backgroundColor: "#208AEF",
-    borderRadius: 10,
+    backgroundColor: c.primary,
+    borderRadius: Radii.md,
     paddingVertical: 14,
+    minHeight: 48,
+    justifyContent: "center",
     alignItems: "center",
     marginTop: 24,
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  deleteButton: { marginTop: 20, paddingVertical: 14, alignItems: "center" },
-  deleteText: { color: "#C0392B", fontWeight: "600", fontSize: 16 },
+  buttonText: {
+    color: c.onPrimary,
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.heading,
+  },
+  deleteButton: {
+    marginTop: 20,
+    paddingVertical: 14,
+    minHeight: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteText: {
+    color: c.danger,
+    fontWeight: FontWeights.heading,
+    fontSize: FontSizes.body,
+  },
 });

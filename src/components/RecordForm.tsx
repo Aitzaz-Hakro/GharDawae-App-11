@@ -16,7 +16,9 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Stack } from "expo-router";
 import { Image } from "expo-image";
 
+import { useColors, type ThemePalette } from "@/constants/useColors";
 import { CameraCapture } from "@/components/CameraCapture";
+import { CameraMark } from "@/components/CameraMark";
 import {
   addPrescription,
   formatDateInput,
@@ -28,6 +30,7 @@ import {
 } from "@/lib/records";
 import { savePhoto } from "@/lib/photo";
 import { uuid } from "@/lib/uuid";
+import { FontSizes, FontWeights, Radii } from "@/constants/theme";
 
 type MedicineDraft = {
   /** Local-only key so editing a row doesn't remount the inputs. */
@@ -61,6 +64,8 @@ export function RecordForm({
   initialPhotoUri,
   onSaved,
 }: RecordFormProps) {
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [photoUri, setPhotoUri] = useState<string | null>(initialPhotoUri ?? null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [doctorName, setDoctorName] = useState("");
@@ -200,8 +205,9 @@ export function RecordForm({
               style={styles.photoPlaceholder}
               onPress={() => setCameraOpen(true)}
             >
+              <CameraMark size={34} color={c.textSecondary} />
               <Text style={styles.photoPlaceholderText}>
-                📷{"\n"}Photograph the prescription
+                Photograph the prescription
               </Text>
             </Pressable>
           )}
@@ -220,6 +226,7 @@ export function RecordForm({
           <TextInput
             style={styles.input}
             placeholder="e.g. Dr. Ahmed"
+            placeholderTextColor={c.textSecondary}
             value={doctorName}
             onChangeText={setDoctorName}
             editable={!busy}
@@ -247,6 +254,7 @@ export function RecordForm({
               value={visitDate}
               onChangeText={setVisitDate}
               placeholder="YYYY-MM-DD"
+              placeholderTextColor={c.textSecondary}
               editable={!busy}
             />
           ) : (
@@ -277,6 +285,7 @@ export function RecordForm({
           <TextInput
             style={styles.input}
             placeholder="e.g. Viral fever"
+            placeholderTextColor={c.textSecondary}
             value={diagnosis}
             onChangeText={setDiagnosis}
             editable={!busy}
@@ -289,6 +298,7 @@ export function RecordForm({
                 <TextInput
                   style={[styles.input, styles.flex]}
                   placeholder="Medicine name"
+                  placeholderTextColor={c.textSecondary}
                   value={m.name}
                   onChangeText={(v) => patchMedicine(m.key, { name: v })}
                   editable={!busy}
@@ -308,6 +318,7 @@ export function RecordForm({
                 <TextInput
                   style={[styles.input, styles.flex]}
                   placeholder="Dosage"
+                  placeholderTextColor={c.textSecondary}
                   value={m.dosage}
                   onChangeText={(v) => patchMedicine(m.key, { dosage: v })}
                   editable={!busy}
@@ -315,6 +326,7 @@ export function RecordForm({
                 <TextInput
                   style={[styles.input, styles.flex]}
                   placeholder="Frequency"
+                  placeholderTextColor={c.textSecondary}
                   value={m.frequency}
                   onChangeText={(v) => patchMedicine(m.key, { frequency: v })}
                   editable={!busy}
@@ -322,6 +334,7 @@ export function RecordForm({
                 <TextInput
                   style={[styles.input, styles.flex]}
                   placeholder="Duration"
+                  placeholderTextColor={c.textSecondary}
                   value={m.duration}
                   onChangeText={(v) => patchMedicine(m.key, { duration: v })}
                   editable={!busy}
@@ -357,6 +370,7 @@ export function RecordForm({
           <TextInput
             style={[styles.input, styles.multiline]}
             placeholder="Anything else to remember"
+            placeholderTextColor={c.textSecondary}
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -369,7 +383,7 @@ export function RecordForm({
             disabled={busy}
           >
             {busy ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={c.onPrimary} />
             ) : (
               <Text style={styles.buttonText}>Save record</Text>
             )}
@@ -380,65 +394,107 @@ export function RecordForm({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+const makeStyles = (c: ThemePalette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
   flex: { flex: 1 },
   content: { padding: 20, gap: 8, paddingBottom: 48 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 14 },
+  label: {
+    fontSize: FontSizes.label,
+    fontWeight: FontWeights.heading,
+    marginTop: 16,
+    color: c.text,
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#D0D3D9",
-    borderRadius: 10,
+    borderColor: c.border,
+    borderRadius: Radii.md,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+    minHeight: 48,
+    fontSize: FontSizes.body,
     justifyContent: "center",
-    minHeight: 46,
+    color: c.text,
   },
-  dateText: { fontSize: 16, color: "#111" },
-  multiline: { minHeight: 84, textAlignVertical: "top" },
-  photo: { width: "100%", height: 220, borderRadius: 12, backgroundColor: "#F0F0F3" },
+  dateText: { fontSize: FontSizes.body, color: c.text },
+  multiline: { minHeight: 84, textAlignVertical: "top", paddingTop: 12 },
+  photo: {
+    width: "100%",
+    height: 220,
+    borderRadius: Radii.md,
+    backgroundColor: c.surface,
+  },
   photoActions: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 8,
   },
-  link: { color: "#208AEF", fontWeight: "600" },
-  linkDanger: { color: "#C0392B", fontWeight: "600" },
+  link: {
+    color: c.primary,
+    fontWeight: FontWeights.heading,
+    paddingVertical: 10,
+    fontSize: FontSizes.body,
+  },
+  linkDanger: {
+    color: c.danger,
+    fontWeight: FontWeights.heading,
+    paddingVertical: 10,
+    fontSize: FontSizes.body,
+  },
   photoPlaceholder: {
     height: 150,
-    borderRadius: 12,
+    borderRadius: Radii.md,
     borderWidth: 1,
-    borderColor: "#D0D3D9",
+    borderColor: c.border,
     borderStyle: "dashed",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FAFAFC",
+    gap: 10,
+    backgroundColor: c.surface,
   },
-  photoPlaceholderText: { color: "#60646C", textAlign: "center", lineHeight: 22 },
+  photoPlaceholderText: {
+    color: c.textSecondary,
+    textAlign: "center",
+    lineHeight: 24,
+    fontSize: FontSizes.body,
+  },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
   chipWrapRow: { flexDirection: "row", gap: 8, paddingVertical: 8 },
   chip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: "#EAF3FE",
+    minHeight: 40,
+    justifyContent: "center",
+    borderRadius: Radii.pill,
+    backgroundColor: c.surfaceSelected,
   },
-  chipText: { color: "#1B6FC4", fontSize: 14 },
+  chipText: { color: c.primary, fontSize: FontSizes.label, fontWeight: FontWeights.label },
   medicineCard: { gap: 8, marginBottom: 8 },
   medicineHead: { flexDirection: "row", gap: 8, alignItems: "center" },
   medicineRow: { flexDirection: "row", gap: 8 },
-  removeBtn: { padding: 8 },
-  removeText: { color: "#C0392B", fontSize: 18, fontWeight: "600" },
-  addMedicine: { paddingVertical: 10 },
-  addMedicineText: { color: "#208AEF", fontWeight: "600" },
+  removeBtn: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removeText: { color: c.danger, fontSize: 20, fontWeight: "600" },
+  addMedicine: { paddingVertical: 12, minHeight: 44, justifyContent: "center" },
+  addMedicineText: {
+    color: c.primary,
+    fontWeight: FontWeights.heading,
+    fontSize: FontSizes.body,
+  },
   button: {
-    backgroundColor: "#208AEF",
-    borderRadius: 10,
+    backgroundColor: c.primary,
+    borderRadius: Radii.md,
     paddingVertical: 14,
+    minHeight: 50,
+    justifyContent: "center",
     alignItems: "center",
     marginTop: 24,
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  buttonText: {
+    color: c.onPrimary,
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.heading,
+  },
 });

@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import { useColors, type ThemePalette } from "@/constants/useColors";
 import { RecordForm } from "@/components/RecordForm";
 import { getDatabase } from "@/lib/powersync/db";
 import type { Member } from "@/lib/family";
+import { FontSizes } from "@/constants/theme";
 
 /**
  * Add a record without going through the camera first — the fallback path when
@@ -12,6 +14,8 @@ import type { Member } from "@/lib/family";
  */
 export default function NewRecordScreen() {
   const router = useRouter();
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const { memberId, photoUri } = useLocalSearchParams<{
     memberId: string;
     photoUri?: string;
@@ -53,7 +57,7 @@ export default function NewRecordScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={c.primary} />
       </View>
     );
   }
@@ -76,7 +80,13 @@ export default function NewRecordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  error: { color: "#C0392B", textAlign: "center" },
+const makeStyles = (c: ThemePalette) => StyleSheet.create({
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+    backgroundColor: c.background,
+  },
+  error: { color: c.danger, textAlign: "center", fontSize: FontSizes.body },
 });

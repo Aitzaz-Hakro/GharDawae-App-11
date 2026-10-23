@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -11,17 +11,23 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter, type Href } from "expo-router";
 
+import { useColors, type ThemePalette } from "@/constants/useColors";
 import { useAuth } from "@/lib/auth-context";
 import { resolveFamily } from "@/lib/family";
 import { search, type SearchHit } from "@/lib/search";
 import { formatVisitDate } from "@/lib/records";
-import { presetEmoji } from "@/constants/avatars";
+import { Avatar } from "@/components/Avatar";
+import { MedicineLine } from "@/components/Ledger";
+import { Magnifier } from "@/components/Magnifier";
+import { FontSizes, FontWeights, Ledger, Radii } from "@/constants/theme";
 
 type Family = { id: string };
 
 export default function SearchScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [family, setFamily] = useState<Family | null>(null);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -83,9 +89,11 @@ export default function SearchScreen() {
       <Stack.Screen options={{ headerShown: true, title: "Search" }} />
 
       <View style={styles.searchBar}>
+        <Magnifier size={17} color={c.textSecondary} />
         <TextInput
           style={styles.input}
           placeholder="Medicine, doctor, member…"
+          placeholderTextColor={c.textSecondary}
           value={query}
           onChangeText={setQuery}
           autoFocus
@@ -103,7 +111,7 @@ export default function SearchScreen() {
           a family member.
         </Text>
       ) : running && results.length === 0 ? (
-        <ActivityIndicator style={styles.spinner} />
+        <ActivityIndicator style={styles.spinner} color={c.primary} />
       ) : (
         <FlatList
           data={results}
@@ -127,15 +135,21 @@ function HitRow({
   hit: SearchHit;
   onOpen: (href: Href) => void;
 }) {
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
+
   if (hit.kind === "member") {
     return (
       <Pressable
         style={styles.row}
         onPress={() => onOpen(`/(main)/member/${hit.id}`)}
       >
-        <Text style={styles.avatar}>
-          {hit.avatarType === "preset" ? presetEmoji(hit.avatarValue) : "🧑"}
-        </Text>
+        <Avatar
+          name={hit.name}
+          type={hit.avatarType}
+          value={hit.avatarValue}
+          size={40}
+        />
         <View style={styles.rowBody}>
           <Text style={styles.title}>{hit.name}</Text>
           <Text style={styles.sub}>
@@ -152,7 +166,9 @@ function HitRow({
         style={styles.row}
         onPress={() => onOpen(`/(main)/record/${hit.id}`)}
       >
-        <Text style={styles.avatar}>📄</Text>
+        <View style={styles.kindMark}>
+          <Text style={styles.kindMarkText}>Rx</Text>
+        </View>
         <View style={styles.rowBody}>
           <Text style={styles.title}>
             {hit.doctorName || "Prescription"} · {hit.memberName}
@@ -165,43 +181,53 @@ function HitRow({
     );
   }
 
-  const meta = [hit.dosage, hit.frequency, hit.duration].filter(Boolean).join(" · ");
   return (
     <Pressable
-      style={styles.row}
+      style={styles.medicineHit}
       onPress={() => onOpen(`/(main)/record/${hit.recordId}`)}
     >
-      <Text style={styles.avatar}>💊</Text>
-      <View style={styles.rowBody}>
-        <Text style={styles.title}>{hit.name}</Text>
-        <Text style={styles.sub}>
-          {meta ? `${meta} · ` : ""}
-          {hit.memberName} · {formatVisitDate(hit.visitDate)}
-        </Text>
+      <Text style={styles.medicineContext}>
+        {hit.memberName} · {formatVisitDate(hit.visitDate)}
+      </Text>
+      <View pointerEvents="none">
+        <MedicineLine
+          name={hit.name}
+          dosage={hit.dosage}
+          frequency={hit.frequency}
+          duration={hit.duration}
+        />
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  searchBar: { paddingHorizontal: 20, paddingTop: 12 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#D0D3D9",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+const makeStyles = (c: ThemePalette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
-  error: { color: "#C0392B", paddingHorizontal: 20, paddingTop: 8 },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: c.border,
+    borderRadius: Radii.md,
+    paddingHorizontal: 14,
+    minHeight: 48,
+    fontSize: FontSizes.body,
+    color: c.text,
+  },
+  error: { color: c.danger, paddingHorizontal: 20, paddingTop: 8 },
   hint: {
     textAlign: "center",
-    color: "#60646C",
+    color: c.textSecondary,
     marginTop: 40,
     paddingHorizontal: 32,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: FontSizes.body,
+    lineHeight: 24,
   },
   spinner: { marginTop: 40 },
   list: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
@@ -210,11 +236,36 @@ const styles = StyleSheet.create({
     gap: 12,
     alignItems: "center",
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E3E5E9",
+    minHeight: 56,
+    borderBottomWidth: Ledger.rule,
+    borderBottomColor: c.border,
   },
-  avatar: { fontSize: 26, width: 34, textAlign: "center" },
+  kindMark: {
+    width: 40,
+    height: 40,
+    borderRadius: Radii.pill,
+    backgroundColor: c.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  kindMarkText: {
+    fontSize: FontSizes.caption,
+    fontWeight: "700",
+    color: c.textSecondary,
+  },
   rowBody: { flex: 1 },
-  title: { fontSize: 16, fontWeight: "600" },
-  sub: { fontSize: 13, color: "#60646C", marginTop: 2 },
+  title: {
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.heading,
+    color: c.text,
+  },
+  sub: { fontSize: FontSizes.label, color: c.textSecondary, marginTop: 2 },
+  medicineHit: { paddingTop: 10 },
+  medicineContext: {
+    fontSize: FontSizes.caption,
+    fontWeight: "700",
+    color: c.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
 });

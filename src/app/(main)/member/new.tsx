@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,16 +12,21 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
+import { useColors, type ThemePalette } from "@/constants/useColors";
 import { addMember, resolveFamily } from "@/lib/family";
 import { useAuth } from "@/lib/auth-context";
-import { AVATAR_PRESETS, RELATIONS } from "@/constants/avatars";
+import { AVATAR_TINTS, RELATIONS } from "@/constants/avatars";
+import { Avatar } from "@/components/Avatar";
+import { FontSizes, FontWeights, Radii } from "@/constants/theme";
 
 export default function NewMemberScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [name, setName] = useState("");
   const [relation, setRelation] = useState<string | null>(null);
-  const [avatarId, setAvatarId] = useState(AVATAR_PRESETS[0].id);
+  const [avatarId, setAvatarId] = useState(AVATAR_TINTS[0].id);
   const [age, setAge] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "other" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,18 +64,31 @@ export default function NewMemberScreen() {
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <Stack.Screen options={{ headerShown: true, title: "Add member" }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Avatar</Text>
+        <View style={styles.preview}>
+          <Avatar name={name || relation || "Aa"} value={avatarId} size={76} />
+          <Text style={styles.previewHint}>
+            Your member&apos;s first letter, in the colour you pick below.
+          </Text>
+        </View>
+
+        <Text style={styles.label}>Colour</Text>
         <View style={styles.avatarRow}>
-          {AVATAR_PRESETS.map((a) => (
+          {AVATAR_TINTS.map((a) => (
             <Pressable
               key={a.id}
-              style={[
-                styles.avatarChip,
-                avatarId === a.id && styles.avatarChipActive,
-              ]}
+              style={styles.avatarChip}
               onPress={() => setAvatarId(a.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Avatar colour ${a.id}`}
+              accessibilityState={{ selected: avatarId === a.id }}
             >
-              <Text style={styles.avatarEmoji}>{a.emoji}</Text>
+              <Avatar
+                name={name || relation || "Aa"}
+                value={a.id}
+                size={48}
+                selected={avatarId === a.id}
+                ringColor={c.primary}
+              />
             </Pressable>
           ))}
         </View>
@@ -79,6 +97,7 @@ export default function NewMemberScreen() {
         <TextInput
           style={styles.input}
           placeholder="e.g. Ammi"
+          placeholderTextColor={c.textSecondary}
           value={name}
           onChangeText={setName}
           editable={!busy}
@@ -108,6 +127,7 @@ export default function NewMemberScreen() {
         <TextInput
           style={styles.input}
           placeholder="Optional"
+          placeholderTextColor={c.textSecondary}
           keyboardType="number-pad"
           value={age}
           onChangeText={setAge}
@@ -137,7 +157,7 @@ export default function NewMemberScreen() {
           disabled={busy}
         >
           {busy ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={c.onPrimary} />
           ) : (
             <Text style={styles.buttonText}>Save member</Text>
           )}
@@ -147,48 +167,65 @@ export default function NewMemberScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+const makeStyles = (c: ThemePalette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
   content: { padding: 20, gap: 8, paddingBottom: 40 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12 },
+  preview: { alignItems: "center", paddingVertical: 12, gap: 10 },
+  previewHint: {
+    fontSize: FontSizes.caption,
+    color: c.textSecondary,
+    textAlign: "center",
+  },
+  label: {
+    fontSize: FontSizes.label,
+    fontWeight: FontWeights.heading,
+    marginTop: 12,
+    color: c.text,
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#D0D3D9",
-    borderRadius: 10,
+    borderColor: c.border,
+    borderRadius: Radii.md,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+    minHeight: 48,
+    fontSize: FontSizes.body,
+    color: c.text,
   },
   avatarRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   avatarChip: {
     width: 52,
     height: 52,
-    borderRadius: 26,
-    backgroundColor: "#F0F0F3",
-    justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
+    justifyContent: "center",
   },
-  avatarChipActive: { borderColor: "#208AEF" },
-  avatarEmoji: { fontSize: 26 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F0F0F3",
+    minHeight: 44,
+    justifyContent: "center",
+    borderRadius: Radii.pill,
+    backgroundColor: c.surface,
   },
-  chipActive: { backgroundColor: "#208AEF" },
-  chipText: { color: "#333", textTransform: "capitalize" },
-  chipTextActive: { color: "#fff", fontWeight: "600" },
+  chipActive: { backgroundColor: c.primary },
+  chipText: {
+    color: c.text,
+    fontSize: FontSizes.label,
+    textTransform: "capitalize",
+  },
+  chipTextActive: { color: c.onPrimary, fontWeight: "600" },
   button: {
-    backgroundColor: "#208AEF",
-    borderRadius: 10,
+    backgroundColor: c.primary,
+    borderRadius: Radii.md,
     paddingVertical: 14,
+    minHeight: 48,
+    justifyContent: "center",
     alignItems: "center",
     marginTop: 24,
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  buttonText: {
+    color: c.onPrimary,
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.heading,
+  },
 });

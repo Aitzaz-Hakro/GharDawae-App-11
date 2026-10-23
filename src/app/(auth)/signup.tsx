@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,9 +14,13 @@ import {
 import { Link, useRouter } from "expo-router";
 import { signUp } from "@/lib/auth";
 import { PRIVACY_VERSION } from "@/constants/privacy";
+import { useColors, type ThemePalette } from "@/constants/useColors";
+import { FontSizes, FontWeights, Radii } from "@/constants/theme";
 
 export default function SignupScreen() {
   const router = useRouter();
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -75,6 +79,7 @@ export default function SignupScreen() {
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor={c.textSecondary}
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
@@ -85,6 +90,7 @@ export default function SignupScreen() {
         <TextInput
           style={styles.input}
           placeholder="Password (min 8 chars)"
+          placeholderTextColor={c.textSecondary}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -93,6 +99,7 @@ export default function SignupScreen() {
         <TextInput
           style={styles.input}
           placeholder="Confirm password"
+          placeholderTextColor={c.textSecondary}
           secureTextEntry
           value={confirm}
           onChangeText={setConfirm}
@@ -126,7 +133,7 @@ export default function SignupScreen() {
           disabled={busy}
         >
           {busy ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={c.onPrimary} />
           ) : (
             <Text style={styles.buttonText}>Sign up</Text>
           )}
@@ -143,49 +150,78 @@ export default function SignupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  inner: { flexGrow: 1, justifyContent: "center", padding: 24, gap: 12 },
-  title: { fontSize: 28, fontWeight: "700", textAlign: "center" },
+const makeStyles = (c: ThemePalette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
+  inner: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, paddingVertical: 32, gap: 12 },
+  title: {
+    fontSize: FontSizes.display,
+    fontWeight: FontWeights.display,
+    textAlign: "center",
+    color: c.text,
+    letterSpacing: -0.4,
+  },
   subtitle: {
-    fontSize: 15,
-    color: "#60646C",
+    fontSize: FontSizes.body,
+    color: c.textSecondary,
     textAlign: "center",
     marginBottom: 16,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#D0D3D9",
-    borderRadius: 10,
+    borderColor: c.border,
+    borderRadius: Radii.md,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+    minHeight: 50,
+    fontSize: FontSizes.body,
+    color: c.text,
   },
   button: {
-    backgroundColor: "#208AEF",
-    borderRadius: 10,
+    backgroundColor: c.primary,
+    borderRadius: Radii.md,
     paddingVertical: 14,
+    minHeight: 50,
+    justifyContent: "center",
     alignItems: "center",
     marginTop: 4,
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  consentRow: { flexDirection: "row", gap: 10, alignItems: "flex-start", marginTop: 4 },
+  buttonText: {
+    color: c.onPrimary,
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.heading,
+  },
+  consentRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+    marginTop: 4,
+    minHeight: 44,
+  },
   checkbox: {
     width: 24,
     height: 24,
-    borderRadius: 6,
+    borderRadius: Radii.sm - 2,
     borderWidth: 2,
-    borderColor: "#C3C7CE",
+    borderColor: c.border,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 2,
   },
-  checkboxOn: { backgroundColor: "#208AEF", borderColor: "#208AEF" },
-  checkmark: { color: "#fff", fontSize: 15, fontWeight: "700", lineHeight: 18 },
-  consentText: { flex: 1, fontSize: 13, color: "#60646C", lineHeight: 19 },
-  consentLink: { color: "#208AEF", fontWeight: "600" },
+  checkboxOn: { backgroundColor: c.primary, borderColor: c.primary },
+  checkmark: {
+    color: c.onPrimary,
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  consentText: {
+    flex: 1,
+    fontSize: FontSizes.caption + 1,
+    color: c.textSecondary,
+    lineHeight: 19,
+  },
+  consentLink: { color: c.primary, fontWeight: "600" },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 8 },
-  footerText: { color: "#60646C" },
-  link: { color: "#208AEF", fontWeight: "600" },
+  footerText: { color: c.textSecondary, fontSize: FontSizes.label },
+  link: { color: c.primary, fontWeight: FontWeights.heading, fontSize: FontSizes.label },
 });
