@@ -100,7 +100,7 @@ _Last updated: 2026-09-26_
 ### M7 — Launch prep → **Phase 10**
 - [x] `docs/privacy-policy.md` written (hosted copy for Play)
 - [x] `docs/m7-launch-pack.md` — Play Console, Data Safety, listing copy, beta plan
-- [x] `scripts/preflight.mjs` + `bun run preflight` — catches build-blocking
+- [x] `scripts/preflight.mjs` + `npm run preflight` — catches build-blocking
   config mistakes without spending an EAS build credit
 - **Status:** built 2026-10-10. Account creation, hosting the policy URL,
   screenshots and the on-device checklist are user tasks, listed in the pack.

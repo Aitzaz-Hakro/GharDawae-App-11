@@ -3,7 +3,7 @@
  * expensive to discover after an EAS build: broken config, missing env vars,
  * dependency drift, and a typecheck/lint pass.
  *
- *   bun run preflight      (or: node scripts/preflight.mjs)
+ *   npm run preflight      (or: node scripts/preflight.mjs)
  *
  * Deliberately does NOT run a build, and does NOT touch the database — it only
  * looks. Anything requiring a device or a real account is in

@@ -462,7 +462,7 @@ _First entry lands when we start M0/M1._
 - **Files:**
   - `docs/m7-launch-pack.md` — policy hosting, Play Console, Data Safety
     answers, listing copy, beta plan, and the on-device checklist.
-  - `scripts/preflight.mjs` — `bun run preflight`.
+  - `scripts/preflight.mjs` — `npm run preflight`.
 - **Key decisions:**
   - **Preflight exists to save build credits.** EAS builds are limited, so the
     cheap-but-expensive-to-discover mistakes (broken app.json, a preview profile
