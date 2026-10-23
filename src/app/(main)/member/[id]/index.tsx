@@ -24,6 +24,7 @@ import {
 } from "@/lib/records";
 import type { Member } from "@/lib/family";
 import { avatarTintForStoredValue } from "@/constants/avatars";
+import { useLanguage } from "@/i18n";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 type RecordRow = Prescription & { medicines: Medicine[] };
@@ -55,6 +56,7 @@ function RecordCard({ item, accentColor }: { item: RecordRow; accentColor: strin
 export default function MemberDetailScreen() {
   const router = useRouter();
   const c = useColors();
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(c, insets.bottom), [c, insets.bottom]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -173,6 +175,23 @@ export default function MemberDetailScreen() {
               </View>
             </View>
 
+            <Pressable
+              style={({ pressed }) => [styles.aiAction, pressed && styles.pressed]}
+              onPress={() =>
+                router.push({
+                  pathname: "/(main)/assistant",
+                  params: { memberId: member?.id ?? id },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel={`${t("member.askAbout")} ${member?.name ?? ""}`}
+            >
+              <Icon name="sparkle" size={20} color={c.primary} />
+              <Text style={styles.aiActionText}>
+                {t("member.askAbout")} {member?.name ?? ""}
+              </Text>
+            </Pressable>
+
             <View style={[styles.countBanner, { borderLeftColor: tint.background }]}>
               <Text style={styles.countValue}>{records.length}</Text>
               <Text style={styles.countLabel}>
@@ -183,7 +202,7 @@ export default function MemberDetailScreen() {
             </View>
 
             {records.length > 0 ? (
-              <Text style={styles.sectionTitle}>Visit history</Text>
+              <Text style={styles.sectionTitle}>{t("member.visitHistory")}</Text>
             ) : null}
           </View>
         }
@@ -199,7 +218,7 @@ export default function MemberDetailScreen() {
               onPress={() => router.push(`/(main)/record/camera?memberId=${id}`)}
             >
               <Icon name="camera" size={22} color={c.onPrimary} />
-              <Text style={styles.emptyButtonText}>Add a record</Text>
+              <Text style={styles.emptyButtonText}>{t("member.newRecord")}</Text>
             </Pressable>
           </View>
         }
@@ -216,7 +235,7 @@ export default function MemberDetailScreen() {
           accessibilityLabel={`Add a prescription for ${member?.name ?? "this member"}`}
         >
           <Icon name="camera-fill" size={24} color={c.onPrimary} />
-          <Text style={styles.fabText}>New record</Text>
+          <Text style={styles.fabText}>{t("member.newRecord")}</Text>
         </Pressable>
       </View>
     </View>
@@ -265,6 +284,24 @@ const makeStyles = (c: ThemePalette, bottomInset: number) =>
       color: c.textSecondary,
       marginTop: 2,
       textTransform: "capitalize",
+    },
+    aiAction: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 16,
+      minHeight: 44,
+      alignSelf: "flex-start",
+      paddingHorizontal: 14,
+      borderRadius: Radii.pill,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+    },
+    aiActionText: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.label,
+      color: c.primary,
     },
     countBanner: {
       marginTop: 20,

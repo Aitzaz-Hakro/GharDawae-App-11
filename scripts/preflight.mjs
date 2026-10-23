@@ -123,6 +123,15 @@ if (existsSync(".env")) {
         "be prefixed EXPO_PUBLIC_ or it ships inside the app",
     );
   }
+
+  // Hackathon AI features. Optional for the core app, so warn rather than fail.
+  const aiKey = /^EXPO_PUBLIC_GEMINI_API_KEY=(.+)$/m.exec(env);
+  if (!aiKey || !aiKey[1].trim()) {
+    warn(
+      "EXPO_PUBLIC_GEMINI_API_KEY is not set — AI review and the assistant " +
+        "will show 'AI is not configured yet' (demo samples still work)",
+    );
+  } else ok("EXPO_PUBLIC_GEMINI_API_KEY is set locally");
 } else {
   warn("no .env file — copy .env.example and fill it in");
 }

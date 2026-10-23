@@ -23,6 +23,7 @@ import {
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { SyncBanner } from "@/components/SyncBanner";
+import { useLanguage } from "@/i18n";
 import { useSyncStatus } from "@/lib/use-sync-status";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const c = useColors();
+  const { t, isUrdu, toggle } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   // Two columns with one gap. Set explicitly: with `flex: 1` an odd final card
@@ -93,19 +95,30 @@ export default function HomeScreen() {
           <View style={styles.headerText}>
             <Text style={styles.eyebrow}>Ghar Dawae</Text>
             <Text style={styles.title} accessibilityRole="header">
-              Our Family
+              {t("home.title")}
             </Text>
           </View>
         </View>
-        <Pressable
-          onPress={() => router.push("/(main)/settings")}
-          hitSlop={8}
-          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-        >
-          <Icon name="gear" size={24} color={c.text} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={toggle}
+            hitSlop={8}
+            style={({ pressed }) => [styles.langButton, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Change language"
+          >
+            <Text style={styles.langButtonText}>{isUrdu ? "EN" : "اردو"}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/(main)/settings")}
+            hitSlop={8}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
+            <Icon name="gear" size={24} color={c.text} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.searchWrap}>
@@ -113,14 +126,31 @@ export default function HomeScreen() {
           style={({ pressed }) => [styles.searchBar, pressed && styles.pressed]}
           onPress={() => router.push("/(main)/search")}
           accessibilityRole="search"
-          accessibilityLabel="Search people, records or medicines"
+          accessibilityLabel={t("home.search")}
         >
           <Icon name="magnifying-glass" size={24} color={c.textSecondary} />
-          <Text style={styles.searchPlaceholder}>
-            Search people, records, medicines
-          </Text>
+          <Text style={styles.searchPlaceholder}>{t("home.search")}</Text>
         </Pressable>
       </View>
+
+      <Pressable
+        style={({ pressed }) => [styles.aiCard, pressed && styles.pressed]}
+        onPress={() => router.push("/(main)/assistant")}
+        accessibilityRole="button"
+        accessibilityLabel={t("home.askAiTitle")}
+      >
+        <View style={styles.aiIcon}>
+          <Icon name="sparkle" size={24} color={c.onPrimary} />
+        </View>
+        <View style={styles.aiText}>
+          <Text style={[styles.aiTitle, isUrdu && styles.urdu]}>
+            {t("home.askAiTitle")}
+          </Text>
+          <Text style={[styles.aiBody, isUrdu && styles.urdu]}>
+            {t("home.askAiBody")}
+          </Text>
+        </View>
+      </Pressable>
 
       <SyncBanner status={sync} />
 
@@ -139,26 +169,24 @@ export default function HomeScreen() {
           members.length > 0 ? (
             <View style={styles.sectionHead}>
               <Text style={styles.sectionTitle} accessibilityRole="header">
-                Family members
+                {t("home.familyMembers")}
               </Text>
               <Text style={styles.sectionCount}>
-                {members.length} {members.length === 1 ? "person" : "people"}
+                {members.length}{" "}
+                {members.length === 1 ? t("home.person") : t("home.people")}
               </Text>
             </View>
           ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyTitle}>No family members yet</Text>
-            <Text style={styles.empty}>
-              Add the people you care for — Ammi, Baba, the kids — then photograph
-              their prescriptions as you go.
-            </Text>
+            <Text style={styles.emptyTitle}>{t("home.emptyTitle")}</Text>
+            <Text style={styles.empty}>{t("home.emptyBody")}</Text>
             <Pressable
               style={({ pressed }) => [styles.emptyButton, pressed && styles.pressed]}
               onPress={() => router.push("/(main)/member/new")}
             >
-              <Text style={styles.emptyButtonText}>Add your first member</Text>
+              <Text style={styles.emptyButtonText}>{t("home.addFirst")}</Text>
             </Pressable>
           </View>
         }
@@ -188,7 +216,10 @@ export default function HomeScreen() {
                   {item.name}
                 </Text>
                 <Text style={styles.memberCount}>
-                  {count} {count === 1 ? "prescription" : "prescriptions"}
+                  {count}{" "}
+                  {count === 1
+                    ? t("home.prescription")
+                    : t("home.prescriptions")}
                 </Text>
               </View>
             </Pressable>
@@ -201,10 +232,10 @@ export default function HomeScreen() {
           style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
           onPress={() => router.push("/(main)/member/new")}
           accessibilityRole="button"
-          accessibilityLabel="Add a family member"
+          accessibilityLabel={t("home.addMember")}
         >
           <Icon name="plus-bold" size={24} color={c.onPrimary} />
-          <Text style={styles.fabText}>Add member</Text>
+          <Text style={styles.fabText}>{t("home.addMember")}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -229,6 +260,7 @@ const makeStyles = (c: ThemePalette, bottomInset: number) =>
       paddingBottom: 16,
     },
     brand: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+    headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
     brandMark: {
       width: 44,
       height: 44,
@@ -259,8 +291,23 @@ const makeStyles = (c: ThemePalette, bottomInset: number) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    langButton: {
+      minHeight: 44,
+      paddingHorizontal: 12,
+      borderRadius: Radii.pill,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    langButtonText: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.label,
+      color: c.primary,
+    },
     pressed: { opacity: 0.8 },
-    searchWrap: { paddingHorizontal: Cabinet.gutter, paddingBottom: 20 },
+    searchWrap: { paddingHorizontal: Cabinet.gutter, paddingBottom: 14 },
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
@@ -278,6 +325,39 @@ const makeStyles = (c: ThemePalette, bottomInset: number) =>
       fontSize: FontSizes.body,
       color: c.textSecondary,
     },
+    aiCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginHorizontal: Cabinet.gutter,
+      marginBottom: 16,
+      padding: 14,
+      borderRadius: Cabinet.cardRadius,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.accent,
+    },
+    aiIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: c.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    aiText: { flex: 1, gap: 2 },
+    aiTitle: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.body,
+      color: c.onAccent,
+    },
+    aiBody: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+      color: c.onAccent,
+      opacity: 0.85,
+    },
+    urdu: { textAlign: "right", writingDirection: "rtl" },
     error: {
       color: c.danger,
       paddingHorizontal: Cabinet.gutter,

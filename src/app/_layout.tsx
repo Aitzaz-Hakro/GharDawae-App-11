@@ -13,6 +13,7 @@ import { ActivityIndicator, useColorScheme, View } from "react-native";
 
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { usePowerSyncSync } from "@/lib/powersync/sync";
+import { LanguageProvider } from "@/i18n";
 import { Colors } from "@/constants/theme";
 import { useColors } from "@/constants/useColors";
 
@@ -118,9 +119,11 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={theme}>
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

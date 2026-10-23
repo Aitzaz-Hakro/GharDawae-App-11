@@ -48,7 +48,13 @@
           "photosPermission": "Ghar Dawae needs access to your photos so you can attach an existing picture of a prescription."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Ghar Dawae uses the microphone so you can speak a medicine name or note instead of typing."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,12 +13,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { Image } from "expo-image";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
 import { CameraCapture } from "@/components/CameraCapture";
 import { Icon } from "@/components/Icon";
+import { AiBanner, type AiStatus } from "@/components/AiBanner";
+import { ScheduleGrid } from "@/components/ScheduleGrid";
+import {
+  GenericAlternatives,
+  SavingsTotal,
+} from "@/components/GenericAlternatives";
+import { useLanguage } from "@/i18n";
 import {
   addPrescription,
   formatDateInput,
@@ -31,6 +38,11 @@ import {
 import { savePhoto } from "@/lib/photo";
 import { uuid } from "@/lib/uuid";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
+import type {
+  AIErrorCode,
+  ExtractedMedicine,
+  PrescriptionExtraction,
+} from "@/lib/ai/types";
 
 type MedicineDraft = {
   /** Local-only key so editing a row doesn't remount the inputs. */
@@ -45,27 +57,59 @@ function emptyMedicine(): MedicineDraft {
   return { key: uuid(), name: "", dosage: "", frequency: "", duration: "" };
 }
 
+function findExtracted(
+  extraction: PrescriptionExtraction | null | undefined,
+  typedName: string,
+): ExtractedMedicine | null {
+  const key = typedName.trim().toLowerCase();
+  if (!key) return null;
+  return (
+    extraction?.medicines.find((m) => key.startsWith(m.name.toLowerCase())) ??
+    null
+  );
+}
+
 export type RecordFormProps = {
   memberId: string;
   familyId: string;
   /** Photo already parked in cache by the camera screen, if any. */
   initialPhotoUri?: string;
   onSaved: () => void;
+  /** AI prefill + review state. Omit for a purely manual record. */
+  extraction?: PrescriptionExtraction | null;
+  aiStatus?: AiStatus;
+  aiError?: string | null;
+  aiErrorCode?: AIErrorCode | null;
+  aiElapsedMs?: number | null;
+  onRetryAi?: () => void;
 };
 
 /**
  * The add-record form. Shared by the standalone "Add record" screen and the
  * camera flow, which pushes straight here after a capture so the shot isn't
  * lost if the user backs out of the form.
+ *
+ * The AI never saves anything: it only pre-fills this form, and the user must
+ * press Save. That is the safety boundary.
  */
 export function RecordForm({
   memberId,
   familyId,
   initialPhotoUri,
   onSaved,
+  extraction = null,
+  aiStatus = "idle",
+  aiError = null,
+  aiErrorCode = null,
+  aiElapsedMs = null,
+  onRetryAi,
 }: RecordFormProps) {
+  const router = useRouter();
   const c = useColors();
+  const { t, isUrdu } = useLanguage();
   const styles = useMemo(() => makeStyles(c), [c]);
+  const appliedRef = useRef(false);
+
   const [photoUri, setPhotoUri] = useState<string | null>(initialPhotoUri ?? null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [doctorName, setDoctorName] = useState("");
@@ -76,6 +120,49 @@ export function RecordForm({
   const [medicines, setMedicines] = useState<MedicineDraft[]>([emptyMedicine()]);
   const [doctors, setDoctors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
+
+  // One-time prop-to-state sync: the extraction arrives asynchronously and
+  // must fill the form exactly once. appliedRef prevents cascading renders, so
+  // the usual set-state-in-effect warning does not apply here.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!extraction || appliedRef.current) return;
+    appliedRef.current = true;
+
+    const aiNotes = [
+      extraction.urdu_summary ? `AI summary:\n${extraction.urdu_summary}` : "",
+      extraction.warnings.length > 0
+        ? `Warnings:\n${extraction.warnings.map((w) => `- ${w}`).join("\n")}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    setDoctorName((prev) => prev.trim() || extraction.doctor_name || "");
+    setDiagnosis((prev) => prev.trim() || extraction.diagnosis || "");
+    setNotes((prev) => prev.trim() || aiNotes);
+    if (extraction.visit_date) {
+      setVisitDate((prev) =>
+        prev === today() ? extraction.visit_date ?? prev : prev,
+      );
+    }
+
+    const rows: MedicineDraft[] = extraction.medicines.map((m) => ({
+      key: uuid(),
+      name: [m.name, m.strength].filter(Boolean).join(" "),
+      dosage: m.dosage ?? "",
+      frequency: m.frequency ?? "",
+      duration: m.duration ?? "",
+    }));
+
+    setMedicines((prev) =>
+      prev.some((m) => m.name.trim().length > 0) || rows.length === 0
+        ? prev
+        : rows,
+    );
+  }, [extraction]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Fast entry: remember doctors this member has seen before.
   useEffect(() => {
@@ -123,6 +210,15 @@ export function RecordForm({
   const suggestions =
     activeName.length >= 2 && matches.query === activeName ? matches.names : [];
 
+  const savingsItems = useMemo(
+    () =>
+      (extraction?.medicines ?? []).map((m) => ({
+        name: m.name,
+        activeIngredient: m.active_ingredient,
+      })),
+    [extraction],
+  );
+
   function patchMedicine(key: string, patch: Partial<MedicineDraft>) {
     setMedicines((rows) =>
       rows.map((r) => (r.key === key ? { ...r, ...patch } : r)),
@@ -137,10 +233,7 @@ export function RecordForm({
     const filled = medicines.filter((m) => m.name.trim());
     // Phase 6 rule: a record needs a photo or at least one medicine.
     if (!photoUri && filled.length === 0) {
-      Alert.alert(
-        "Nothing to save yet",
-        "Add a photo of the prescription or at least one medicine.",
-      );
+      Alert.alert(t("record.nothingTitle"), t("record.nothingBody"));
       return;
     }
 
@@ -167,7 +260,7 @@ export function RecordForm({
       });
       onSaved();
     } catch (e) {
-      Alert.alert("Could not save", (e as Error).message);
+      Alert.alert(t("record.couldNotSave"), (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -178,7 +271,7 @@ export function RecordForm({
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <Stack.Screen
-        options={{ headerShown: true, title: "New record" }}
+        options={{ headerShown: true, title: t("member.newRecord") }}
       />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -193,10 +286,10 @@ export function RecordForm({
               <Image source={{ uri: photoUri }} style={styles.photo} contentFit="cover" />
               <View style={styles.photoActions}>
                 <Pressable onPress={() => setCameraOpen(true)}>
-                  <Text style={styles.link}>Retake</Text>
+                  <Text style={styles.link}>{t("record.retake")}</Text>
                 </Pressable>
                 <Pressable onPress={() => setPhotoUri(null)}>
-                  <Text style={styles.linkDanger}>Remove photo</Text>
+                  <Text style={styles.linkDanger}>{t("record.removePhoto")}</Text>
                 </Pressable>
               </View>
             </View>
@@ -205,18 +298,18 @@ export function RecordForm({
               style={styles.photoPlaceholder}
               onPress={() => setCameraOpen(true)}
               accessibilityRole="button"
-              accessibilityLabel="Photograph the prescription"
+              accessibilityLabel={t("record.photograph")}
             >
               <Icon name="camera" size={34} color={c.textSecondary} />
               <Text style={styles.photoPlaceholderText}>
-                Photograph the prescription
+                {t("record.photograph")}
               </Text>
             </Pressable>
           )}
 
           <CameraCapture
             visible={cameraOpen}
-            title="Take photo"
+            title={t("record.photograph")}
             onClose={() => setCameraOpen(false)}
             onCaptured={(uri) => {
               setPhotoUri(uri);
@@ -224,10 +317,63 @@ export function RecordForm({
             }}
           />
 
-          <Text style={styles.label}>Doctor</Text>
+          <AiBanner
+            status={aiStatus}
+            extraction={extraction}
+            error={aiError}
+            errorCode={aiErrorCode}
+            elapsedMs={aiElapsedMs}
+            onRetry={onRetryAi}
+          />
+
+          {extraction && extraction.warnings.length > 0 ? (
+            <View style={styles.warningCard}>
+              <View style={styles.warningHead}>
+                <Icon name="warning-circle" size={20} color={c.warningText} />
+                <Text style={[styles.warningTitle, isUrdu && styles.urdu]}>
+                  {t("review.warnings")}
+                </Text>
+              </View>
+              {extraction.warnings.map((warning, index) => (
+                <View key={`${warning}-${index}`} style={styles.warningRow}>
+                  <Text style={styles.warningBullet}>•</Text>
+                  <Text style={[styles.warningText, isUrdu && styles.urdu]}>
+                    {warning}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {extraction ? (
+            <ScheduleGrid medicines={extraction.medicines} />
+          ) : null}
+
+          {extraction?.raw_text ? (
+            <View style={styles.rawWrap}>
+              <Pressable
+                onPress={() => setShowRaw((value) => !value)}
+                style={styles.rawToggle}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showRaw }}
+              >
+                <Text style={[styles.rawToggleText, isUrdu && styles.urdu]}>
+                  {t("review.whatAiRead")}
+                </Text>
+                <Text style={styles.rawChevron}>{showRaw ? "−" : "+"}</Text>
+              </Pressable>
+              {showRaw ? (
+                <Text style={styles.rawText}>{extraction.raw_text}</Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          <Text style={[styles.label, isUrdu && styles.urdu]}>
+            {t("record.doctor")}
+          </Text>
           <TextInput
-            style={styles.input}
-            placeholder="e.g. Dr. Ahmed"
+            style={[styles.input, isUrdu && styles.urduInput]}
+            placeholder={t("record.doctorPlaceholder")}
             placeholderTextColor={c.textSecondary}
             value={doctorName}
             onChangeText={setDoctorName}
@@ -249,7 +395,9 @@ export function RecordForm({
             </ScrollView>
           )}
 
-          <Text style={styles.label}>Visit date</Text>
+          <Text style={[styles.label, isUrdu && styles.urdu]}>
+            {t("record.visitDate")}
+          </Text>
           {Platform.OS === "web" ? (
             <TextInput
               style={styles.input}
@@ -283,106 +431,153 @@ export function RecordForm({
             </>
           )}
 
-          <Text style={styles.label}>Diagnosis</Text>
+          <Text style={[styles.label, isUrdu && styles.urdu]}>
+            {t("record.diagnosis")}
+          </Text>
           <TextInput
-            style={styles.input}
-            placeholder="e.g. Viral fever"
+            style={[styles.input, isUrdu && styles.urduInput]}
+            placeholder={t("record.diagnosisPlaceholder")}
             placeholderTextColor={c.textSecondary}
             value={diagnosis}
             onChangeText={setDiagnosis}
             editable={!busy}
           />
 
-          <Text style={styles.label}>Medicines</Text>
-          {medicines.map((m) => (
-            <View key={m.key} style={styles.medicineCard}>
-              <View style={styles.medicineHead}>
-                <TextInput
-                  style={[styles.input, styles.flex]}
-                  placeholder="Medicine name"
-                  placeholderTextColor={c.textSecondary}
-                  value={m.name}
-                  onChangeText={(v) => patchMedicine(m.key, { name: v })}
-                  editable={!busy}
+          <Text style={[styles.label, isUrdu && styles.urdu]}>
+            {t("record.medicines")}
+          </Text>
+          {medicines.map((m) => {
+            const aiMedicine = findExtracted(extraction, m.name);
+            return (
+              <View key={m.key} style={styles.medicineCard}>
+                <View style={styles.medicineHead}>
+                  <TextInput
+                    style={[styles.input, styles.flex]}
+                    placeholder={t("record.medicineName")}
+                    placeholderTextColor={c.textSecondary}
+                    value={m.name}
+                    onChangeText={(v) => patchMedicine(m.key, { name: v })}
+                    editable={!busy}
+                  />
+                  {medicines.length > 1 && (
+                    <Pressable
+                      style={styles.removeBtn}
+                      onPress={() => removeMedicine(m.key)}
+                      hitSlop={8}
+                      disabled={busy}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove this medicine"
+                    >
+                      <Icon name="x" size={20} color={c.danger} />
+                    </Pressable>
+                  )}
+                </View>
+
+                {aiMedicine && aiMedicine.confidence < 0.7 ? (
+                  <View style={styles.lowChip}>
+                    <Icon name="warning-circle" size={14} color={c.warningText} />
+                    <Text style={styles.lowChipText}>
+                      {t("review.checkThis")}
+                    </Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.medicineRow}>
+                  <TextInput
+                    style={[styles.input, styles.flex]}
+                    placeholder={t("record.dosage")}
+                    placeholderTextColor={c.textSecondary}
+                    value={m.dosage}
+                    onChangeText={(v) => patchMedicine(m.key, { dosage: v })}
+                    editable={!busy}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.flex]}
+                    placeholder={t("record.frequency")}
+                    placeholderTextColor={c.textSecondary}
+                    value={m.frequency}
+                    onChangeText={(v) => patchMedicine(m.key, { frequency: v })}
+                    editable={!busy}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.flex]}
+                    placeholder={t("record.duration")}
+                    placeholderTextColor={c.textSecondary}
+                    value={m.duration}
+                    onChangeText={(v) => patchMedicine(m.key, { duration: v })}
+                    editable={!busy}
+                  />
+                </View>
+
+                <GenericAlternatives
+                  name={aiMedicine?.name ?? m.name}
+                  activeIngredient={aiMedicine?.active_ingredient ?? null}
                 />
-                {medicines.length > 1 && (
-                  <Pressable
-                    style={styles.removeBtn}
-                    onPress={() => removeMedicine(m.key)}
-                    hitSlop={8}
-                    disabled={busy}
-                    accessibilityRole="button"
-                    accessibilityLabel="Remove this medicine"
-                  >
-                    <Icon name="x" size={20} color={c.danger} />
-                  </Pressable>
+
+                {m.key === lastKey && suggestions.length > 0 && (
+                  <View style={styles.chipWrap}>
+                    {suggestions.map((s) => (
+                      <Pressable
+                        key={s}
+                        style={styles.chip}
+                        onPress={() => {
+                          patchMedicine(m.key, { name: s });
+                          setMatches({ query: "", names: [] });
+                        }}
+                      >
+                        <Text style={styles.chipText}>{s}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
                 )}
               </View>
-              <View style={styles.medicineRow}>
-                <TextInput
-                  style={[styles.input, styles.flex]}
-                  placeholder="Dosage"
-                  placeholderTextColor={c.textSecondary}
-                  value={m.dosage}
-                  onChangeText={(v) => patchMedicine(m.key, { dosage: v })}
-                  editable={!busy}
-                />
-                <TextInput
-                  style={[styles.input, styles.flex]}
-                  placeholder="Frequency"
-                  placeholderTextColor={c.textSecondary}
-                  value={m.frequency}
-                  onChangeText={(v) => patchMedicine(m.key, { frequency: v })}
-                  editable={!busy}
-                />
-                <TextInput
-                  style={[styles.input, styles.flex]}
-                  placeholder="Duration"
-                  placeholderTextColor={c.textSecondary}
-                  value={m.duration}
-                  onChangeText={(v) => patchMedicine(m.key, { duration: v })}
-                  editable={!busy}
-                />
-              </View>
-              {m.key === lastKey && suggestions.length > 0 && (
-                <View style={styles.chipWrap}>
-                  {suggestions.map((s) => (
-                    <Pressable
-                      key={s}
-                      style={styles.chip}
-                      onPress={() => {
-                        patchMedicine(m.key, { name: s });
-                        setMatches({ query: "", names: [] });
-                      }}
-                    >
-                      <Text style={styles.chipText}>{s}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-          ))}
+            );
+          })}
           <Pressable
             style={styles.addMedicine}
             onPress={() => setMedicines((rows) => [...rows, emptyMedicine()])}
             disabled={busy}
             accessibilityRole="button"
-            accessibilityLabel="Add another medicine"
+            accessibilityLabel={t("record.addMedicine")}
           >
             <Icon name="plus-bold" size={18} color={c.primary} />
-            <Text style={styles.addMedicineText}>Add another medicine</Text>
+            <Text style={styles.addMedicineText}>{t("record.addMedicine")}</Text>
           </Pressable>
 
-          <Text style={styles.label}>Notes</Text>
+          {savingsItems.length > 0 ? (
+            <SavingsTotal items={savingsItems} />
+          ) : null}
+
+          <Text style={[styles.label, isUrdu && styles.urdu]}>
+            {t("record.notes")}
+          </Text>
           <TextInput
-            style={[styles.input, styles.multiline]}
-            placeholder="Anything else to remember"
+            style={[styles.input, styles.multiline, isUrdu && styles.urduInput]}
+            placeholder={t("record.notesPlaceholder")}
             placeholderTextColor={c.textSecondary}
             value={notes}
             onChangeText={setNotes}
             multiline
             editable={!busy}
           />
+
+          {aiStatus !== "idle" ? (
+            <View style={styles.disclaimerWrap}>
+              <Text style={[styles.disclaimer, isUrdu && styles.urdu]}>
+                {t("review.consent")}
+              </Text>
+              <Text style={[styles.disclaimer, isUrdu && styles.urdu]}>
+                {t("review.disclaimer")}
+              </Text>
+              <Pressable
+                onPress={() => router.push("/(main)/settings/privacy")}
+                accessibilityRole="button"
+                accessibilityLabel={t("settings.privacy")}
+              >
+                <Text style={styles.link}>{t("settings.privacy")}</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           <Pressable
             style={[styles.button, busy && styles.buttonDisabled]}
@@ -392,7 +587,7 @@ export function RecordForm({
             {busy ? (
               <ActivityIndicator color={c.onPrimary} />
             ) : (
-              <Text style={styles.buttonText}>Save record</Text>
+              <Text style={styles.buttonText}>{t("common.save")}</Text>
             )}
           </Pressable>
         </ScrollView>
@@ -424,6 +619,7 @@ const makeStyles = (c: ThemePalette) => StyleSheet.create({
     justifyContent: "center",
     color: c.text,
   },
+  urduInput: { textAlign: "right", writingDirection: "rtl" },
   dateText: { fontFamily: Fonts.body, fontSize: FontSizes.body, color: c.text },
   multiline: { minHeight: 96, textAlignVertical: "top", paddingTop: 14 },
   photo: {
@@ -499,7 +695,6 @@ const makeStyles = (c: ThemePalette) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  removeText: { color: c.danger, fontSize: 20, fontWeight: "600" },
   addMedicine: {
     flexDirection: "row",
     alignItems: "center",
@@ -526,4 +721,87 @@ const makeStyles = (c: ThemePalette) => StyleSheet.create({
     fontFamily: Fonts.headingSemi,
     fontSize: FontSizes.heading,
   },
+  warningCard: {
+    borderRadius: Cabinet.blockRadius,
+    borderWidth: 1,
+    borderColor: c.warningText,
+    backgroundColor: c.warningSurface,
+    padding: 14,
+    gap: 6,
+    marginTop: 12,
+  },
+  warningHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  warningTitle: {
+    fontFamily: Fonts.headingSemi,
+    fontSize: FontSizes.body,
+    color: c.warningText,
+  },
+  warningRow: { flexDirection: "row", gap: 6, alignItems: "flex-start" },
+  warningBullet: {
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.body,
+    color: c.warningText,
+    lineHeight: 21,
+  },
+  warningText: {
+    flex: 1,
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.label,
+    color: c.warningText,
+    lineHeight: 21,
+  },
+  rawWrap: {
+    marginTop: 12,
+    borderRadius: Cabinet.blockRadius,
+    borderWidth: 1,
+    borderColor: c.border,
+    backgroundColor: c.surface,
+    padding: 12,
+  },
+  rawToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 36,
+  },
+  rawToggleText: {
+    fontFamily: Fonts.headingSemi,
+    fontSize: FontSizes.label,
+    color: c.primary,
+  },
+  rawChevron: {
+    fontFamily: Fonts.headingBold,
+    fontSize: FontSizes.heading,
+    color: c.primary,
+  },
+  rawText: {
+    marginTop: 8,
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.label,
+    color: c.textSecondary,
+    lineHeight: 21,
+  },
+  lowChip: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: Radii.pill,
+    backgroundColor: c.warningSurface,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  lowChipText: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: FontSizes.caption,
+    color: c.warningText,
+  },
+  disclaimerWrap: { marginTop: 20, gap: 4 },
+  disclaimer: {
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.caption,
+    color: c.textSecondary,
+    lineHeight: 17,
+  },
+  urdu: { textAlign: "right", writingDirection: "rtl" },
 });

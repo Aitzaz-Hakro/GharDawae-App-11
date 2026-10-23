@@ -17,11 +17,14 @@ import { useAuth } from "@/lib/auth-context";
 import { deleteAccountData } from "@/lib/account";
 import { useSyncStatus } from "@/lib/use-sync-status";
 import { Icon, type IconName } from "@/components/Icon";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/i18n";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { t } = useLanguage();
   const c = useColors();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(c, insets.bottom), [c, insets.bottom]);
@@ -86,7 +89,7 @@ export default function SettingsScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: "Settings",
+          title: t("settings.title"),
           headerShadowVisible: false,
           headerStyle: { backgroundColor: c.background },
         }}
@@ -96,6 +99,14 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Text style={styles.rowLabel}>Signed in as</Text>
           <Text style={styles.rowValue}>{session?.user.email ?? "—"}</Text>
+        </View>
+
+        <Text style={styles.sectionLabel}>{t("common.language")}</Text>
+        <View style={styles.card}>
+          <View style={styles.languageRow}>
+            <Text style={styles.rowLabel}>{t("common.language")}</Text>
+            <LanguageToggle compact />
+          </View>
         </View>
 
         <Text style={styles.sectionLabel}>Backup</Text>
@@ -224,6 +235,13 @@ const makeStyles = (c: ThemePalette, bottomInset: number) =>
       fontSize: FontSizes.label,
       color: c.danger,
       marginTop: 4,
+    },
+    languageRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      minHeight: 44,
     },
     group: {
       marginTop: 16,
