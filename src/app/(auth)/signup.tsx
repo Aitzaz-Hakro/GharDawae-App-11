@@ -54,7 +54,7 @@ export default function SignupScreen() {
     >
       <View style={styles.inner}>
         <Text style={styles.title}>Create account</Text>
-        <Text style={styles.subtitle}>You'll manage your family's records</Text>
+        <Text style={styles.subtitle}>You&apos;ll manage your family&apos;s records</Text>
 
         <TextInput
           style={styles.input}

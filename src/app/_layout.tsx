@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { ActivityIndicator, useColorScheme, View } from "react-native";
 
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { usePowerSyncSync } from "@/lib/powersync/sync";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,6 +40,8 @@ function useProtectedRoute() {
 function RootNavigator() {
   const { loading } = useAuth();
   useProtectedRoute();
+  // Connect local PowerSync DB <-> Supabase whenever signed in (no-op offline).
+  usePowerSyncSync();
 
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync();

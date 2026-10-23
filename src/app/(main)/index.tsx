@@ -12,8 +12,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 
 import { signOut } from "@/lib/auth";
+import { useAuth } from "@/lib/auth-context";
 import {
-  getOrCreateFamily,
+  resolveFamily,
   listMembers,
   type Family,
   type Member,
@@ -22,15 +23,22 @@ import { presetEmoji } from "@/constants/avatars";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { session } = useAuth();
+  const managerId = session?.user.id;
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    // No session id => nothing to resolve yet (auth gate will redirect).
+    if (!managerId) {
+      setLoading(false);
+      return;
+    }
     setError(null);
     try {
-      const fam = await getOrCreateFamily();
+      const fam = await resolveFamily(managerId);
       setFamily(fam);
       setMembers(await listMembers(fam.id));
     } catch (e) {
@@ -38,7 +46,7 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [managerId]);
 
   // Reload whenever the screen regains focus (e.g. after adding a member).
   useFocusEffect(

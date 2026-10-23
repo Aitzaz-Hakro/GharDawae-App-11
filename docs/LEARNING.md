@@ -64,11 +64,37 @@ _Last updated: 2026-09-26_
 - **Status:** 🔴
 
 ### PowerSync
-- **What:** a service that keeps local SQLite and cloud Postgres in sync
-  automatically (handles conflicts, offline queue).
-- **Why here:** hand-writing sync is bug-prone; PowerSync does it right.
-- **Learn:** PowerSync docs → "How it works" + React Native quickstart.
-- **Status:** 🔴 (new to almost everyone — we go slow here, it's M2)
+- **What:** a service + SDK that keeps a local SQLite database on the device in
+  sync with a cloud database (our Supabase Postgres). The app reads/writes local
+  SQLite instantly (works offline); PowerSync pushes/pulls changes in the
+  background when online.
+- **Why here:** hand-writing sync (conflict handling, offline queue) is very
+  bug-prone. PowerSync does it correctly. This IS the offline-first core.
+- **Parts to know:**
+  - **Client SDK** (`@powersync/react-native`) — the local DB + query hooks.
+  - **Cloud service** — hosted; connects to Supabase, needs an account.
+  - **Sync rules** — server-side config saying who syncs what (ours: a manager
+    syncs only their own family).
+  - **Connector** — small code file: provides auth token + uploads queued writes.
+- **Learn:** docs.powersync.com → React Native/Expo guide.
+- **Status:** 🔴 (new — go slow; this is M2's core)
+
+### op-sqlite
+- **What:** the actual SQLite engine PowerSync uses on React Native
+  (`@op-engineering/op-sqlite`). Replaces expo-sqlite — can't run both.
+- **Why here:** PowerSync requires it; it also supports SQLCipher encryption.
+- **Status:** 🔴
+
+### SQLCipher (via op-sqlite) · corrected
+- **What:** encrypted SQLite — the local DB file is unreadable without a key
+  (256-bit AES).
+- **How (corrected for our stack):** enable `"op-sqlite": { "sqlcipher": true }`
+  in package.json, then pass `sqliteOptions.encryptionKey` when creating the DB.
+  (NOT the expo-sqlite `useSQLCipher` plugin I first wrote — PowerSync owns the
+  SQLite layer.)
+- **Key storage:** the encryption key comes from `expo-secure-store` (device
+  Keystore/Keychain), never hard-coded.
+- **Status:** 🔴
 
 ---
 
@@ -142,6 +168,75 @@ _Last updated: 2026-09-26_
   not AAB).
 - **Status:** 🟡
 
+### Build profiles: development vs preview vs production · M2
+- **What:** EAS builds differ by profile (defined in `eas.json`).
+  - **development** — `developmentClient: true`. Includes the dev launcher +
+    dev menu; REQUIRES a running Metro server. This is the "Expo banner" screen.
+    For day-to-day coding (hot reload).
+  - **preview** — standalone APK, `distribution: internal`. JS **bundled inside**
+    the app; NO Metro, NO dev launcher, runs on its own. For testing as a real
+    app / sharing with testers.
+  - **production** — `.aab` for Google Play. No dev tooling.
+- **Why here:** to get a "real" installable app with no Expo banners and no
+  dependency on the PC dev server, build the **preview** profile.
+- **Commands:**
+  - dev: `npx eas-cli@latest build -p android --profile development`
+  - standalone: `npx eas-cli@latest build -p android --profile preview`
+  - store: `npx eas-cli@latest build -p android --profile production`
+- **Gotcha:** a standalone (preview/production) build has a **frozen JS bundle** —
+  no hot reload; changes need a rebuild unless EAS Update (OTA) is set up.
+  Uninstall the dev build before installing a preview APK (different signing).
+- **Status:** 🟡
+
+### Camera + image picker (expo-camera, expo-image-picker) · M3
+- **What:** `expo-camera` renders `<CameraView>` (the live preview) and
+  `takePictureAsync()` returns a photo at a temporary `uri`. `expo-image-picker`
+  opens the system gallery via `launchImageLibraryAsync()`.
+- **Why here:** camera-first record entry is the core flow; the gallery picker
+  is the fallback for slips already photographed.
+- **Key facts:**
+  - Permissions come from hooks: `useCameraPermissions()` and
+    `ImagePicker.useMediaLibraryPermissions()`. Both return
+    `[response, requestPermission]`.
+  - Only **one camera preview at a time** — unmount it when the screen loses
+    focus, or the next camera screen stays black.
+  - The returned `uri` lives in the **cache** directory, which the OS may purge.
+    Copy it somewhere durable before trusting it.
+- **Status:** 🔴
+
+### File storage (expo-file-system, class API) · M3
+- **What:** the current API is three classes — `File`, `Directory`, `Paths`.
+  `Paths.document` = permanent app storage; `Paths.cache` = purgeable.
+  `new File(Paths.document, "photos", "x.jpg")`, then `.create()`, `.copy()`,
+  `.move()`, `.delete()`, `.exists`.
+- **Why here:** prescription photos must outlive the camera's temp file.
+- **Gotcha:** the old functions (`FileSystem.documentDirectory`, `copyAsync`,
+  `getInfoAsync`…) are **deprecated and throw** from the main entry point. Use
+  the classes, or import from `expo-file-system/legacy` to keep old code alive.
+- **Also:** don't store absolute file URIs in the database — on iOS the app's
+  container path changes between installs. Store the file **name** and rebuild
+  the path at read time.
+- **Status:** 🔴
+
+### Supabase Storage (buckets, policies, signed URLs) · M3
+- **What:** file storage alongside the database. A **bucket** is a container;
+  buckets are **private by default**, and a private bucket denies *everything*
+  until you add policies. Access is granted with RLS policies on the
+  `storage.objects` table — the same policy language as the database.
+- **Why here:** prescription photos must survive a reinstall, and photos must
+  never leak between families.
+- **Key facts:**
+  - `storage.foldername(name)[1]` splits the object path, so a key of
+    `<family_id>/<record_id>.jpg` lets a policy check ownership in one line.
+  - A private bucket has no public URL. You mint a **signed URL**
+    (`createSignedUrl`) — scoped to one object, expiring.
+  - Uploads default to upsert behaviour, so the `update` policy matters as much
+    as `insert`.
+  - A 403 from storage almost always means a missing policy, not a bug.
+- **Note:** PowerSync syncs **table rows only** — file uploads are ordinary
+  client calls, so table sync rules and file policies are separate concerns.
+- **Status:** 🔴
+
 ### Git / version control
 - **What:** tracks code history, lets you undo, branch, and back up your work.
 - **Why here:** this repo isn't a git repo yet — we should init it early so your
@@ -184,8 +279,37 @@ we use it in code.)_
   `detectSessionInUrl: false` because mobile has no URL bar.
 - **Status:** 🟢
 
-- [ ] Camera access (expo-camera / image-picker)
-- [ ] File system (saving photos on device)
+### Transactions (db.writeTransaction) · M3
+- **What:** a block of writes that succeeds or fails as one unit —
+  `db.writeTransaction(async (tx) => { ... })`, where `tx.execute(...)` is the
+  in-transaction handle. Other devices/screens reading the DB never see a
+  half-finished result.
+- **Why here:** a prescription and its medicines are one logical record. Without
+  a transaction a crash between the two INSERTs leaves an orphan.
+- **Note:** plain `db.execute()` is fine for a single statement.
+- **Status:** 🟡
+
+### Debounced autocomplete · M3
+- **What:** wait ~150 ms after the user stops typing before running the query,
+  and tag each response with the text it was for so a slow reply for an old
+  keystroke can't overwrite a newer one.
+- **Why here:** searching past medicine names on every keystroke is wasteful and
+  can show results that don't match what's on screen.
+- **Status:** 🟡
+
+### Route types (Expo Router typedRoutes) · M3
+- **What:** with `experiments.typedRoutes`, Expo generates
+  `.expo/types/router.d.ts` listing every valid route, so `router.push` typos
+  become type errors. The file is generated and git-ignored.
+- **Gotcha:** a **newly added route file isn't in those types until Metro has
+  run once**. Typecheck fails with "not assignable" on a path that clearly
+  exists — start the dev server and re-run `tsc`.
+- **Status:** 🟡
+
 - [ ] State management (how data flows through the app)
 - [ ] Forms & validation (the fast-entry screen)
+- [x] Camera access (expo-camera / image-picker) · M3
+- [x] File system (saving photos on device) · M3
+- [x] Photo upload to Supabase Storage (on sync) · M3
+- [ ] Search (SQLite queries across members, records, medicines) · M4
 - _…more as they come up_
