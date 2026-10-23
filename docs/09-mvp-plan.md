@@ -30,13 +30,15 @@ _Last updated: 2026-09-26_
   + photo-upload avatar deferred (add-member + preset avatars done).
 
 ### M2 — Local DB + offline core · ~2 weeks (24h) ⚠ hardest
-- [ ] SQLite schema (all entities from Phase 6)
-- [ ] SQLCipher encryption + key in `expo-secure-store`
-- [ ] PowerSync client wired to Supabase
-- [ ] Verify: offline read/write works, syncs when back online
+- [x] SQLite schema (all entities from Phase 6)
+- [x] SQLCipher encryption + key in `expo-secure-store`
+- [x] PowerSync client wired to Supabase
+- [x] Verify: offline read/write works, syncs when back online
 - **Done when:** add data offline → reconnect → appears in Supabase (and reverse).
-- **Note:** this is the riskiest milestone (sync + native modules + encryption).
-  Budget extra buffer; expect debugging.
+  Verified working 2026-10-08 (PowerSync Client Auth via Supabase JWKS; the
+  `aud` claim mismatch was the last blocker).
+- **Status:** ✅ done. Steps: (1) encrypted local SQLite, (2) cloud sync,
+  (3) standalone preview APK.
 
 ### M3 — Records (the heart) · ~2 weeks (24h)
 - [ ] Camera-first add prescription (open camera → snap → fields)
@@ -48,6 +50,8 @@ _Last updated: 2026-09-26_
 - [ ] **Fast-entry UX**: today's date default, recent-doctor suggestions,
       medicine autocomplete from past entries, minimal required fields
 - **Done when:** full add→view flow works offline, the core value is real.
+- **Progress:** [x] step 1 — records data layer (`src/lib/records.ts`) + camera/
+  image-picker/file-system deps installed.
 
 ### M4 — Search · ~0.5 week (6h)
 - [ ] Search across members, records, medicines (local SQLite query)
