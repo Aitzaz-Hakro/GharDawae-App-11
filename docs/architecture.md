@@ -238,6 +238,44 @@ _First entry lands when we start M0/M1._
   Restart Metro after editing `.env`. Same rebuild as Step 1 covers the native
   modules.
 
+### M2 Step 3 — Standalone (preview) build · 2026-10-08
+- **What it does:** produces an installable APK with the JS bundle baked in —
+  no Expo dev launcher screen, no Metro/dev-server dependency. Runs on its own.
+- **Why:** the `development` profile ships `expo-dev-client`, so every launch
+  shows the dev launcher and needs the PC's Metro server. A standalone build is
+  what a real tester/user should install.
+- **Files/config:**
+  - `eas.json` — three profiles: `development` (`developmentClient: true`,
+    needs Metro), `preview` (plain — `distribution: "internal"`,
+    `android.buildType: "apk"`), `production` (`app-bundle`, `autoIncrement`).
+    The absence of `developmentClient` in preview is exactly what removes the
+    dev launcher.
+  - EAS environment variables (project-scoped, environment `preview`):
+    `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`,
+    `EXPO_PUBLIC_POWERSYNC_URL`. Created with
+    `eas env:create --environment preview`. **Dev-client builds read the local
+    `.env`; EAS cloud builds do NOT** — they need these vars on the server, or
+    the bundle ships with `undefined` config.
+- **Key decisions:**
+  - Keep `expo-dev-client` in `dependencies` (not devDependencies) for now.
+    EAS autolinking is driven by `developmentClient: true`, so for a prebuild
+    project a `--profile preview` build omits the dev launcher. Moving it to
+    devDependencies would also strip it, but that change needs a native
+    rebuild verification, so it's deferred.
+  - Preview APK is signed with the same remote keystore as the dev build →
+    Android installs it as an upgrade. Backendless installs (a dev build with
+    no Metro running) are wiped; local data goes with it. Fresh installs are
+    expected for the standalone step anyway.
+- **Commands:** build `npx eas-cli@latest build -p android --profile preview`;
+  install from the build's link/QR; store build uses
+  `--profile production`.
+- **Gotchas:** a standalone build has a **frozen JS bundle** — no hot reload;
+  code changes need a rebuild (or EAS Update OTA once configured). Local
+  `.env` edits do not reach cloud builds — use `eas env:create`/`env:update`.
+- **ARTIFACT:** preview APK build
+  `3c5fe40e-c764-434b-893e-358349cd13ff` @ commit `78ba5be` —
+  https://expo.dev/accounts/aitzaz_dev/projects/ghar-dawae/builds/3c5fe40e-c764-434b-893e-358349cd13ff
+
 ---
 
 ## 5. Design Approach

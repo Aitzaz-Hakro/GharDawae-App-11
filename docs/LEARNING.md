@@ -168,6 +168,26 @@ _Last updated: 2026-09-26_
   not AAB).
 - **Status:** 🟡
 
+### Build profiles: development vs preview vs production · M2
+- **What:** EAS builds differ by profile (defined in `eas.json`).
+  - **development** — `developmentClient: true`. Includes the dev launcher +
+    dev menu; REQUIRES a running Metro server. This is the "Expo banner" screen.
+    For day-to-day coding (hot reload).
+  - **preview** — standalone APK, `distribution: internal`. JS **bundled inside**
+    the app; NO Metro, NO dev launcher, runs on its own. For testing as a real
+    app / sharing with testers.
+  - **production** — `.aab` for Google Play. No dev tooling.
+- **Why here:** to get a "real" installable app with no Expo banners and no
+  dependency on the PC dev server, build the **preview** profile.
+- **Commands:**
+  - dev: `npx eas-cli@latest build -p android --profile development`
+  - standalone: `npx eas-cli@latest build -p android --profile preview`
+  - store: `npx eas-cli@latest build -p android --profile production`
+- **Gotcha:** a standalone (preview/production) build has a **frozen JS bundle** —
+  no hot reload; changes need a rebuild unless EAS Update (OTA) is set up.
+  Uninstall the dev build before installing a preview APK (different signing).
+- **Status:** 🟡
+
 ### Git / version control
 - **What:** tracks code history, lets you undo, branch, and back up your work.
 - **Why here:** this repo isn't a git repo yet — we should init it early so your
