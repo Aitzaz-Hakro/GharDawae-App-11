@@ -10,20 +10,24 @@ _Last updated: 2026-09-26_
 ## Milestones (dependency order)
 
 ### M0 — Setup (foundation) · ~1 week (12h)
-- [ ] Expo (managed) + TypeScript project init
-- [ ] Repo structure (`/app`, `/db`, `/lib`, `/components`, `/docs` already exists)
-- [ ] Supabase project created (Postgres + Auth + Storage)
+- [x] Expo (managed) + TypeScript project init
+- [x] Repo structure (`/app`, `/db`, `/lib`, `/components`, `/docs` already exists)
+- [x] Supabase project created (Postgres + Auth + Storage)
+- [x] Schema + RLS pushed to Supabase (db/schema.sql, db/rls.sql — verified)
 - [ ] EAS dev build installed on real Android phone (verify it runs)
-- [ ] Expo Go working for quick iteration
+- [ ] Expo Go working for quick iteration (blocked: "failed to download remote
+      update" — likely SDK 57 vs Expo Go version / network; retry --tunnel)
 - **Done when:** blank app runs on your phone, Supabase reachable.
 
 ### M1 — Auth + Family · ~1.5 weeks (18h)
-- [ ] Supabase signup/login (manager)
-- [ ] Splash → auth check → route (Home vs Login)
-- [ ] Create family on first login
-- [ ] Home = family avatar grid
-- [ ] Add / edit member (name, avatar preset+photo, relation, DOB/age, gender)
+- [x] Supabase signup/login (manager)
+- [x] Splash → auth check → route (Home vs Login)
+- [x] Create family on first login
+- [x] Home = family avatar grid
+- [x] Add / edit member (name, avatar preset+photo, relation, DOB/age, gender)
 - **Done when:** manager logs in, adds members, sees grid.
+- **Status:** code complete + type-checks; needs on-phone run to verify. Edit-member
+  + photo-upload avatar deferred (add-member + preset avatars done).
 
 ### M2 — Local DB + offline core · ~2 weeks (24h) ⚠ hardest
 - [ ] SQLite schema (all entities from Phase 6)

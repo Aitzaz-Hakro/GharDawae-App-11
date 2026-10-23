@@ -118,6 +118,40 @@ _First entry lands when we start M0/M1._
 - **Gotchas / learned:** `EXPO_PUBLIC_` prefix required for env vars to reach
   the app bundle; without it `process.env.X` is undefined at runtime.
 
+### M1 — Auth + Family · 2026-09-26
+- **What it does:** manager signup/login, auth-gated navigation, family auto-created
+  on first login, home = family avatar grid, add-member form, member detail (stub
+  for M3 records).
+- **Files:**
+  - `src/lib/auth.ts` — signUp / signIn / signOut / getSession (Supabase Auth).
+  - `src/lib/auth-context.tsx` — `AuthProvider` + `useAuth`; tracks session via
+    `onAuthStateChange`, restores from AsyncStorage on launch.
+  - `src/app/_layout.tsx` — root auth gate: `(auth)` group vs `(main)` group,
+    splash held until session resolved.
+  - `src/app/(auth)/` — `_layout`, `login.tsx`, `signup.tsx`.
+  - `src/app/(main)/` — `_layout`, `index.tsx` (family grid + FAB + logout),
+    `member/new.tsx` (add member), `member/[id].tsx` (detail, records stub).
+  - `src/lib/family.ts` — Family/Member types + getMyFamily / createFamily /
+    getOrCreateFamily / listMembers / addMember.
+  - `src/constants/avatars.ts` — emoji preset avatars + relation list.
+- **Data flow (v1 interim):** reads/writes go straight to Supabase. **M2 swaps
+  reads to local SQLite** with PowerSync syncing to Supabase — screens/hooks
+  stay the same, only `src/lib/*` data functions change.
+- **Key decisions:**
+  - Family auto-created ("My Family") on first login (getOrCreateFamily) — zero
+    onboarding friction; rename later in settings.
+  - Emoji preset avatars for v1 (no asset deps); photo upload + Design Day later.
+  - Default UI only (plain styles) per design-day plan; not final visuals.
+- **Gotchas / learned:**
+  - Expo Router route types live in `.expo/types/router.d.ts` — regenerated when
+    `expo start` runs. After adding/moving routes, `tsc` errors on `href` strings
+    until the dev server regenerates them. Ran `expo start --offline` once to fix.
+  - Deleted the template's demo components (animated-icon, app-tabs, hint-row,
+    web-badge, external-link) — they referenced the removed `/explore` route.
+  - `ThemeProvider` for expo-router comes from `expo-router`, not
+    `@react-navigation/native` (not installed).
+- **Verify pending (needs phone):** actually run signup → add member → see grid.
+
 ---
 
 ## 5. Design Approach
