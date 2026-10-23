@@ -1,0 +1,45 @@
+# Ghar Dawae — PowerSync Sync Rules
+# =================================
+# Paste into the PowerSync dashboard → your instance → Sync Streams → editor,
+# then Validate → Deploy.
+#
+# Goal: a manager syncs ONLY their own family's rows (matches the Supabase RLS
+# model in db/rls.sql). PowerSync authenticates with the Supabase JWT, so
+# auth.user_id() is the manager's Supabase auth id (= families.manager_user_id).
+
+config:
+  edition: 3
+
+streams:
+  # The manager's own family.
+  family:
+    auto_subscribe: true
+    queries:
+      - SELECT * FROM families WHERE manager_user_id = auth.user_id()
+
+  # Members belonging to that family.
+  members:
+    auto_subscribe: true
+    queries:
+      - SELECT members.* FROM members
+        JOIN families ON families.id = members.family_id
+        WHERE families.manager_user_id = auth.user_id()
+
+  # Prescriptions for those members.
+  prescriptions:
+    auto_subscribe: true
+    queries:
+      - SELECT prescriptions.* FROM prescriptions
+        JOIN members ON members.id = prescriptions.member_id
+        JOIN families ON families.id = members.family_id
+        WHERE families.manager_user_id = auth.user_id()
+
+  # Medicines for those prescriptions.
+  medicines:
+    auto_subscribe: true
+    queries:
+      - SELECT medicines.* FROM medicines
+        JOIN prescriptions ON prescriptions.id = medicines.prescription_id
+        JOIN members ON members.id = prescriptions.member_id
+        JOIN families ON families.id = members.family_id
+        WHERE families.manager_user_id = auth.user_id()
