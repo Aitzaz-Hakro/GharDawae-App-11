@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -16,6 +17,7 @@ import { useAuth } from "@/lib/auth-context";
 import { resolveFamily } from "@/lib/family";
 import { search, type SearchHit } from "@/lib/search";
 import { formatVisitDate } from "@/lib/records";
+import { useKeyboardVisible } from "@/lib/use-keyboard-visible";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
@@ -27,6 +29,7 @@ export default function SearchScreen() {
   const { session } = useAuth();
   const c = useColors();
   const styles = useMemo(() => makeStyles(c), [c]);
+  const keyboardVisible = useKeyboardVisible();
   const [family, setFamily] = useState<Family | null>(null);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -94,19 +97,53 @@ export default function SearchScreen() {
         }}
       />
 
-      <View style={styles.searchBar}>
-        <Icon name="magnifying-glass" size={22} color={c.textSecondary} />
-        <TextInput
-          style={styles.input}
-          placeholder="Search people, records, medicines"
-          placeholderTextColor={c.textSecondary}
-          value={query}
-          onChangeText={setQuery}
-          autoFocus
-          autoCorrect={false}
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-        />
+      <View style={styles.searchRow}>
+        <View style={styles.searchBar}>
+          <Icon name="magnifying-glass" size={22} color={c.textSecondary} />
+          <TextInput
+            style={styles.input}
+            placeholder="Search people, records, medicines"
+            placeholderTextColor={c.textSecondary}
+            value={query}
+            onChangeText={setQuery}
+            autoFocus
+            autoCorrect={false}
+            returnKeyType="search"
+            submitBehavior="blurAndSubmit"
+            onSubmitEditing={Keyboard.dismiss}
+            selectionColor={c.primary}
+            accessibilityLabel="Search people, records and medicines"
+          />
+          {query.length > 0 ? (
+            <Pressable
+              onPress={() => {
+                setQuery("");
+                setHits([]);
+              }}
+              hitSlop={8}
+              style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Icon name="x" size={18} color={c.textSecondary} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        {keyboardVisible ? (
+          <Pressable
+            onPress={Keyboard.dismiss}
+            style={({ pressed }) => [
+              styles.doneButton,
+              { backgroundColor: c.primary },
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss keyboard"
+          >
+            <Text style={styles.doneText}>Done</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -124,10 +161,20 @@ export default function SearchScreen() {
           keyExtractor={(item) => `${item.kind}-${item.id}`}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          onScrollBeginDrag={Keyboard.dismiss}
           ListEmptyComponent={
             <Text style={styles.hint}>No matches for “{query.trim()}”.</Text>
           }
-          renderItem={({ item }) => <HitRow hit={item} onOpen={router.push} />}
+          renderItem={({ item }) => (
+            <HitRow
+              hit={item}
+              onOpen={(href) => {
+                Keyboard.dismiss();
+                router.push(href);
+              }}
+            />
+          )}
         />
       )}
     </SafeAreaView>
@@ -214,12 +261,18 @@ function HitRow({
 const makeStyles = (c: ThemePalette) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
+    searchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginHorizontal: Cabinet.gutter,
+      marginTop: 4,
+    },
     searchBar: {
+      flex: 1,
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
-      marginHorizontal: Cabinet.gutter,
-      marginTop: 4,
       paddingHorizontal: 16,
       minHeight: 56,
       borderRadius: Radii.xl,
@@ -233,6 +286,25 @@ const makeStyles = (c: ThemePalette) =>
       fontSize: FontSizes.body,
       color: c.text,
       minHeight: 54,
+    },
+    clearButton: {
+      width: 32,
+      height: 32,
+      borderRadius: Radii.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    doneButton: {
+      minHeight: 44,
+      paddingHorizontal: 16,
+      borderRadius: Radii.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    doneText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.label,
     },
     error: {
       color: c.danger,

@@ -14,6 +14,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-rou
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
 import { MedicineCard } from "@/components/Cabinet";
+import { AIPrescriptionReview } from "@/components/AIPrescriptionReview";
 import { Icon } from "@/components/Icon";
 import {
   deletePrescription,
@@ -25,6 +26,8 @@ import {
 } from "@/lib/records";
 import { deletePhoto } from "@/lib/photo";
 import { usePhotoSource } from "@/lib/use-photo-source";
+import { analyzePrescriptionImage } from "@/lib/ai/service";
+import type { PrescriptionExtractionResult } from "@/lib/ai/prescription-types";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function RecordDetailScreen() {
@@ -37,6 +40,33 @@ export default function RecordDetailScreen() {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<PrescriptionExtractionResult | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  async function onAnalyzeSlip() {
+    if (!uri) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiModalOpen(true);
+    try {
+      const res = await analyzePrescriptionImage({
+        imageUri: uri,
+        language: "ur",
+      });
+      setAiResult(res);
+    } catch (e: any) {
+      setAiError(
+        e.userFacingMessage?.en ||
+          e.message ||
+          "Failed to analyze prescription.",
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -124,7 +154,21 @@ export default function RecordDetailScreen() {
         </Text>
 
         {uri ? (
-          <Image source={{ uri }} style={styles.photo} contentFit="cover" />
+          <View>
+            <Image source={{ uri }} style={styles.photo} contentFit="cover" />
+            <Pressable
+              style={styles.aiButton}
+              onPress={onAnalyzeSlip}
+              disabled={aiLoading}
+              accessibilityRole="button"
+              accessibilityLabel="ParchiiAI Prescription Assistant"
+            >
+              <Icon name="pill-fill" size={18} color={c.surface} />
+              <Text style={styles.aiButtonText}>
+                {aiLoading ? "Reading prescription..." : "ParchiiAI Assistant & Instructions"}
+              </Text>
+            </Pressable>
+          </View>
         ) : (
           <View style={[styles.photo, styles.noPhoto]}>
             <Icon name="pill-fill" size={32} color={c.textSecondary} />
@@ -175,6 +219,16 @@ export default function RecordDetailScreen() {
           <Icon name="trash" size={20} color={c.danger} />
           <Text style={styles.deleteText}>Delete record</Text>
         </Pressable>
+
+        <AIPrescriptionReview
+          visible={aiModalOpen}
+          result={aiResult}
+          loading={aiLoading}
+          error={aiError}
+          onClose={() => setAiModalOpen(false)}
+          onApply={() => setAiModalOpen(false)}
+          applyLabel="Done"
+        />
       </ScrollView>
     </View>
   );
@@ -240,6 +294,22 @@ const makeStyles = (c: ThemePalette, bottomInset: number) =>
       height: 260,
       borderRadius: Cabinet.cardRadius,
       backgroundColor: c.surface,
+    },
+    aiButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.primary,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: Radii.lg,
+      gap: 8,
+      marginTop: 10,
+    },
+    aiButtonText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.heading,
+      fontSize: FontSizes.body,
     },
     noPhoto: { justifyContent: "center", alignItems: "center", gap: 8 },
     noPhotoText: {

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +16,7 @@ import { addMember, resolveFamily } from "@/lib/family";
 import { useAuth } from "@/lib/auth-context";
 import { AVATAR_PRESETS, RELATIONS } from "@/constants/avatars";
 import { Avatar } from "@/components/Avatar";
+import { KeyboardAwareScroll } from "@/components/ui/KeyboardAwareScroll";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function NewMemberScreen() {
@@ -71,10 +71,7 @@ export default function NewMemberScreen() {
           headerStyle: { backgroundColor: c.background },
         }}
       />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
+      <KeyboardAwareScroll contentContainerStyle={styles.content}>
         <View style={styles.preview}>
           <Avatar name={name || relation || "Aa"} value={avatarId} size={80} />
           <Text style={styles.previewHint}>
@@ -113,6 +110,8 @@ export default function NewMemberScreen() {
           value={name}
           onChangeText={setName}
           editable={!busy}
+          returnKeyType="done"
+          selectionColor={c.primary}
         />
 
         <Text style={styles.label}>Relation</Text>
@@ -146,6 +145,8 @@ export default function NewMemberScreen() {
           value={age}
           onChangeText={setAge}
           editable={!busy}
+          returnKeyType="done"
+          selectionColor={c.primary}
         />
 
         <Text style={styles.label}>Gender</Text>
@@ -184,7 +185,7 @@ export default function NewMemberScreen() {
             <Text style={styles.buttonText}>Save member</Text>
           )}
         </Pressable>
-      </ScrollView>
+      </KeyboardAwareScroll>
     </View>
   );
 }

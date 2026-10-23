@@ -2,9 +2,10 @@
  * Ghar Dawae theme tokens — single source of truth for color, type, spacing.
  * See docs/design-system.md for the rationale behind every value.
  *
- * Direction: Warm Cabinet. A cream paper base, a deep green for actions, warm
- * ink for text, and a fixed family palette of eight person colours. The warmth
- * is carried by surface and type, never by decoration.
+ * Direction: Warm Cabinet, softened with the Eldora care language. A cream
+ * paper base, a deep green for actions, warm ink for text, soft peach and pale
+ * green accent surfaces, and a fixed family palette of eight person colours.
+ * The warmth is carried by surface and type, never by decoration.
  *
  * Every text pair below was measured, not assumed. Ratios are inline so a
  * future change has to argue with a number.
@@ -39,6 +40,16 @@ export const Colors = {
     warningText: '#6B4A0C',
     infoSurface: '#DDEBE8',
     infoText: '#1F4D48',
+    // care accents — soft surfaces, never the action colour
+    peach: '#FBE1D1', // 10.9:1 with onPeach
+    peachPressed: '#F6D3C0',
+    peachAccent: '#F4B69F', // illustration accent
+    onPeach: '#4A2E22', // 10.9:1 on peach
+    peachInk: '#8A4B33', // 5.9:1 on peach
+    mint: '#E4EBDD', // pale green shortcut card
+    onMint: '#27452F', // 9.6:1 on mint
+    tan: '#E9D7C7',
+    sun: '#F6C88C',
     // legacy aliases (kept so unmigrated screens still resolve)
     backgroundElement: '#FFFBF3',
     backgroundSelected: '#EFE8D9',
@@ -65,6 +76,16 @@ export const Colors = {
     warningText: '#F0C97A',
     infoSurface: '#1B2A33',
     infoText: '#A7CBE0',
+    // care accents — warm night equivalents, same roles
+    peach: '#3A2A22',
+    peachPressed: '#46332A',
+    peachAccent: '#6B4636',
+    onPeach: '#F8DCCB',
+    peachInk: '#E3AF97',
+    mint: '#243026',
+    onMint: '#D3E7D8',
+    tan: '#2E261D',
+    sun: '#5A4526',
     // legacy aliases
     backgroundElement: '#1F1B15',
     backgroundSelected: '#2A251C',
@@ -89,6 +110,8 @@ export const Fonts = {
 
 /** Type scale (sp). Body never below 16 — caretaker-friendly. */
 export const FontSizes = {
+  brand: 30,
+  hero: 34,
   display: 28,
   title: 22,
   heading: 18,
@@ -105,6 +128,26 @@ export const Motion = {
   press: 120,
   insert: 180,
   fade: 160,
+  enter: 340,
+  stagger: 70,
+  screen: 220,
+} as const;
+
+export const Shadows = {
+  card: {
+    shadowColor: '#3B2A1E',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  raised: {
+    shadowColor: '#3B2A1E',
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
 } as const;
 
 export const Radii = {

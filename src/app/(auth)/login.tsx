@@ -1,9 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -11,30 +7,38 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
+
 import { signIn } from "@/lib/auth";
 import { useColors, type ThemePalette } from "@/constants/useColors";
 import { Icon } from "@/components/Icon";
+import { KeyboardAwareScroll } from "@/components/ui/KeyboardAwareScroll";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function LoginScreen() {
+  const router = useRouter();
   const c = useColors();
   const styles = useMemo(() => makeStyles(c), [c]);
+  const passwordRef = useRef<TextInput>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [focused, setFocused] = useState<"email" | "password" | null>(null);
 
   const onSubmit = useCallback(async () => {
     if (!email.trim() || !password) {
-      Alert.alert("Missing info", "Enter your email and password.");
+      setError("Enter your email and password.");
       return;
     }
+    setError(null);
     setBusy(true);
     try {
       await signIn(email.trim(), password);
-      // Auth gate in root layout redirects to (main) on session change.
+      // The auth gate in the root layout redirects to (main).
     } catch (e) {
-      Alert.alert("Login failed", (e as Error).message);
+      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -42,74 +46,114 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View style={styles.inner}>
-          <View style={styles.brandBlock}>
-            <View style={styles.brandMark}>
-              <Icon name="house-line-fill" size={28} color={c.onPrimary} />
-            </View>
-            <Text style={styles.brand} accessibilityRole="header">
-              Ghar Dawae
-            </Text>
-            <Text style={styles.tagline}>گھر دوا</Text>
-            <Text style={styles.subtitle}>
-              Your family&apos;s medicines, always with you
-            </Text>
-          </View>
+      <View style={styles.topBar}>
+        <Pressable
+          onPress={() => router.replace("/(auth)/welcome")}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.backButton,
+            { backgroundColor: c.surface, borderColor: c.border },
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Back to welcome"
+        >
+          <Icon name="arrow-left" size={22} color={c.text} />
+        </Pressable>
+        <Text style={styles.topTitle}>Welcome back</Text>
+        <View style={styles.topSpacer} />
+      </View>
 
+      <KeyboardAwareScroll contentContainerStyle={styles.content}>
+        <View style={styles.brandBlock}>
+          <View style={[styles.brandMark, { backgroundColor: c.primary }]}>
+            <Icon name="heart" size={24} color={c.onPrimary} />
+          </View>
+          <Text style={styles.brand} accessibilityRole="header">
+            Ghar Dawae
+          </Text>
+          <Text style={styles.subtitle}>
+            Log in to your family&apos;s medicine cabinet
+          </Text>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
           <Text style={styles.label}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              focused === "email" && { borderColor: c.primary },
+            ]}
             placeholder="you@example.com"
             placeholderTextColor={c.textSecondary}
             autoCapitalize="none"
+            autoCorrect={false}
             keyboardType="email-address"
             autoComplete="email"
+            textContentType="emailAddress"
+            selectionColor={c.primary}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            onFocus={() => setFocused("email")}
+            onBlur={() => setFocused(null)}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => {
+              setEmail(value);
+              if (error) setError(null);
+            }}
             editable={!busy}
           />
 
           <Text style={styles.label}>Password</Text>
           <TextInput
-            style={styles.input}
+            ref={passwordRef}
+            style={[
+              styles.input,
+              focused === "password" && { borderColor: c.primary },
+            ]}
             placeholder="Your password"
             placeholderTextColor={c.textSecondary}
             secureTextEntry
+            autoComplete="password"
+            textContentType="password"
+            selectionColor={c.primary}
+            returnKeyType="done"
+            onSubmitEditing={onSubmit}
+            onFocus={() => setFocused("password")}
+            onBlur={() => setFocused(null)}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(value) => {
+              setPassword(value);
+              if (error) setError(null);
+            }}
             editable={!busy}
           />
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.pressed,
-              busy && styles.buttonDisabled,
-            ]}
-            onPress={onSubmit}
-            disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel="Log in"
-          >
-            {busy ? (
-              <ActivityIndicator color={c.onPrimary} />
-            ) : (
-              <Text style={styles.buttonText}>Log in</Text>
-            )}
-          </Pressable>
+          {error ? (
+            <Text
+              style={styles.error}
+              accessibilityLiveRegion="polite"
+              accessibilityRole="alert"
+            >
+              {error}
+            </Text>
+          ) : null}
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>No account? </Text>
-            <Link href="/(auth)/signup" style={styles.link}>
-              Sign up
-            </Link>
-          </View>
+          <PrimaryButton
+            label="Log in"
+            onPress={onSubmit}
+            loading={busy}
+          />
         </View>
-      </KeyboardAvoidingView>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>New here? </Text>
+          <Link href="/(auth)/signup" style={styles.link}>
+            Create an account
+          </Link>
+        </View>
+      </KeyboardAwareScroll>
     </SafeAreaView>
   );
 }
@@ -117,35 +161,51 @@ export default function LoginScreen() {
 const makeStyles = (c: ThemePalette) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
-    flex: { flex: 1 },
-    inner: {
-      flex: 1,
-      justifyContent: "center",
-      paddingHorizontal: 24,
-      paddingBottom: 48,
+    topBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      minHeight: 56,
+      gap: 12,
     },
-    brandBlock: { alignItems: "center", marginBottom: 32 },
-    brandMark: {
-      width: 60,
-      height: 60,
-      borderRadius: Radii.lg,
-      backgroundColor: c.primary,
+    backButton: {
+      width: 44,
+      height: 44,
+      borderRadius: Radii.pill,
+      borderWidth: 1,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 14,
+    },
+    topTitle: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.body,
+      color: c.text,
+    },
+    topSpacer: { width: 44 },
+    pressed: { opacity: 0.78 },
+    content: {
+      flexGrow: 1,
+      justifyContent: "center",
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 28,
+      gap: 16,
+    },
+    brandBlock: { alignItems: "center", gap: 6 },
+    brandMark: {
+      width: 56,
+      height: 56,
+      borderRadius: Radii.pill,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 6,
     },
     brand: {
       fontFamily: Fonts.headingBold,
-      fontSize: 34,
+      fontSize: FontSizes.brand,
       color: c.text,
-      letterSpacing: -0.8,
-      textAlign: "center",
-    },
-    tagline: {
-      fontFamily: Fonts.body,
-      fontSize: FontSizes.heading,
-      color: c.primary,
-      marginTop: 4,
+      letterSpacing: -0.7,
       textAlign: "center",
     },
     subtitle: {
@@ -153,14 +213,20 @@ const makeStyles = (c: ThemePalette) =>
       fontSize: FontSizes.body,
       color: c.textSecondary,
       textAlign: "center",
-      marginTop: 8,
-      lineHeight: 24,
+      lineHeight: 23,
+    },
+    card: {
+      borderRadius: Radii.xl,
+      borderWidth: 1,
+      padding: 18,
+      gap: 6,
     },
     label: {
       fontFamily: Fonts.headingSemi,
       fontSize: FontSizes.label,
       color: c.text,
-      marginBottom: 6,
+      marginTop: 6,
+      marginBottom: 4,
     },
     input: {
       borderWidth: 1,
@@ -172,24 +238,22 @@ const makeStyles = (c: ThemePalette) =>
       fontFamily: Fonts.body,
       fontSize: FontSizes.body,
       color: c.text,
-      marginBottom: 16,
+      marginBottom: 6,
     },
-    button: {
-      backgroundColor: c.primary,
-      borderRadius: Radii.xl,
-      minHeight: Cabinet.actionHeight,
-      justifyContent: "center",
+    error: {
+      fontFamily: Fonts.bodyMedium,
+      fontSize: FontSizes.label,
+      color: c.danger,
+      lineHeight: 20,
+      marginTop: 2,
+    },
+    footer: {
+      flexDirection: "row",
       alignItems: "center",
-      marginTop: 8,
+      justifyContent: "center",
+      flexWrap: "wrap",
+      minHeight: Cabinet.touchTarget,
     },
-    pressed: { opacity: 0.85 },
-    buttonDisabled: { opacity: 0.6 },
-    buttonText: {
-      color: c.onPrimary,
-      fontFamily: Fonts.headingSemi,
-      fontSize: FontSizes.heading,
-    },
-    footer: { flexDirection: "row", justifyContent: "center", marginTop: 20 },
     footerText: {
       color: c.textSecondary,
       fontFamily: Fonts.body,
@@ -199,5 +263,7 @@ const makeStyles = (c: ThemePalette) =>
       color: c.primary,
       fontFamily: Fonts.headingSemi,
       fontSize: FontSizes.label,
+      paddingVertical: 12,
+      paddingHorizontal: 4,
     },
   });

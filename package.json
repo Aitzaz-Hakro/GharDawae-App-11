@@ -56,6 +56,7 @@
     "web": "expo start --web",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
+    "test:ai": "node scripts/test-ai-service.mjs",
     "preflight": "node scripts/preflight.mjs"
   },
   "private": true,

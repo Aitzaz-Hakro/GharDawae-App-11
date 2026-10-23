@@ -25,6 +25,7 @@ the Play Store yet.
 | Encrypted local DB + PowerSync cloud sync | Done |
 | Photo backup to Supabase Storage | Done |
 | Privacy screen, signup consent, delete-all-data | Done |
+| ParchiiAI: Prescription Intelligence (OpenAI / Gemini Vision) | Built (`docs/ai-prescription-intelligence.md`) |
 | Launch pack + preflight checks | Done (`docs/m7-launch-pack.md`) |
 | On-device QA pass, Play submission | Pending |
 
@@ -48,10 +49,21 @@ the Play Store yet.
   OR at least one medicine.
 
 **MVP scope:** signup/login, family members, prescription photo + manual entry,
-medicine list, visit history, offline search, cloud backup + sync.
+medicine list, visit history, offline search, cloud backup + sync, and ParchiiAI prescription intelligence.
 
-**Out of v1:** reminders, AI assistant, OCR, doctor directory, biometrics, iOS,
-web, OTA updates.
+**Out of v1:** reminders, doctor directory, biometrics, iOS, web, OTA updates.
+
+---
+
+## ParchiiAI — Prescription Intelligence
+
+Ghar Dawae now integrates **ParchiiAI**, an intelligent prescription-reading assistant powered by **OpenAI Vision (`gpt-4o-mini`, fallback `gpt-4o`) or Google Gemini 2.5 Flash Vision (`gemini-2.5-flash`)** — whichever key is configured:
+- **Vision Extraction:** Transcribes handwritten doctor slips, medicine strips, dosage frequencies (`1+0+1`, `TDS`), and meal instructions.
+- **Multilingual Support:** Generates simple, localized caregiver explanations in **Urdu (اردو)**, **Sindhi (سنڌي)**, and **English**.
+- **Clinical Safety Boundaries:** Detects ambiguous handwriting or torn packaging; flags uncertain fields with a mandatory pharmacist confirmation requirement.
+- **Interactive Review:** Caretakers review and edit extracted medicines in an intuitive drawer before committing to local SQLite.
+
+See the complete architecture, test suite, and safety boundaries in [`docs/ai-prescription-intelligence.md`](docs/ai-prescription-intelligence.md).
 
 ---
 
@@ -212,6 +224,8 @@ the first two are missing):
 | `EXPO_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API (public by design; RLS is the boundary) |
 | `EXPO_PUBLIC_POWERSYNC_URL` | PowerSync dashboard → Connect → instance URL |
+| `EXPO_PUBLIC_OPENAI_API_KEY` **or** `EXPO_PUBLIC_GEMINI_API_KEY` | ParchiiAI vision. **OpenAI takes priority if both are set.** |
+| `EXPO_PUBLIC_AI_PROXY_URL` | Optional serverless proxy; when set it overrides the direct provider call |
 
 Cloud setup, in order:
 

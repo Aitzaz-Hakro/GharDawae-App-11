@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -18,6 +17,8 @@ import { Image } from "expo-image";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
 import { CameraCapture } from "@/components/CameraCapture";
+import { AIPrescriptionReview } from "@/components/AIPrescriptionReview";
+import { KeyboardAwareScroll } from "@/components/ui/KeyboardAwareScroll";
 import { Icon } from "@/components/Icon";
 import { AiBanner, type AiStatus } from "@/components/AiBanner";
 import { ScheduleGrid } from "@/components/ScheduleGrid";
@@ -37,12 +38,14 @@ import {
 } from "@/lib/records";
 import { savePhoto } from "@/lib/photo";
 import { uuid } from "@/lib/uuid";
+import { analyzePrescriptionImage } from "@/lib/ai/service";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 import type {
   AIErrorCode,
   ExtractedMedicine,
   PrescriptionExtraction,
 } from "@/lib/ai/types";
+import type { PrescriptionExtractionResult } from "@/lib/ai/prescription-types";
 
 type MedicineDraft = {
   /** Local-only key so editing a row doesn't remount the inputs. */
@@ -121,6 +124,11 @@ export function RecordForm({
   const [doctors, setDoctors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [parchiiOpen, setParchiiOpen] = useState(false);
+  const [parchiiLoading, setParchiiLoading] = useState(false);
+  const [parchiiResult, setParchiiResult] =
+    useState<PrescriptionExtractionResult | null>(null);
+  const [parchiiError, setParchiiError] = useState<string | null>(null);
 
   // One-time prop-to-state sync: the extraction arrives asynchronously and
   // must fill the form exactly once. appliedRef prevents cascading renders, so
@@ -229,6 +237,75 @@ export function RecordForm({
     setMedicines((rows) => rows.filter((r) => r.key !== key));
   }
 
+  /**
+   * The ParchiiAI path is deliberately manual: it reads the photo the
+   * caretaker already attached and opens a review drawer. It never saves.
+   * The automatic assistant extraction (main's AiBanner) is independent.
+   */
+  async function onAnalyzeWithParchii() {
+    if (!photoUri) {
+      Alert.alert(
+        t("record.nothingTitle"),
+        "Add a photo of the prescription first.",
+      );
+      return;
+    }
+    setParchiiLoading(true);
+    setParchiiError(null);
+    setParchiiOpen(true);
+    try {
+      const result = await analyzePrescriptionImage({
+        imageUri: photoUri,
+        language: "ur",
+      });
+      setParchiiResult(result);
+    } catch (e) {
+      const error = e as Error & { userFacingMessage?: { en?: string } };
+      setParchiiError(
+        error.userFacingMessage?.en ||
+          error.message ||
+          "Failed to analyze the prescription.",
+      );
+    } finally {
+      setParchiiLoading(false);
+    }
+  }
+
+  function onApplyParchiiResult(data: {
+    doctorName?: string | null;
+    visitDate?: string | null;
+    diagnosis?: string | null;
+    medicines: {
+      name: string;
+      dosage: string;
+      frequency: string;
+      duration: string;
+    }[];
+    notes?: string;
+  }) {
+    if (data.doctorName && !doctorName.trim()) setDoctorName(data.doctorName);
+    if (data.visitDate) setVisitDate(data.visitDate);
+    if (data.diagnosis && !diagnosis.trim()) setDiagnosis(data.diagnosis);
+    if (data.medicines.length > 0) {
+      const existingFilled = medicines.filter((m) => m.name.trim());
+      const newMeds = data.medicines.map((m) => ({
+        key: uuid(),
+        name: m.name,
+        dosage: m.dosage,
+        frequency: m.frequency,
+        duration: m.duration,
+      }));
+      setMedicines(
+        existingFilled.length === 0 ? newMeds : [...existingFilled, ...newMeds],
+      );
+    }
+    if (data.notes) {
+      setNotes((prev) =>
+        prev ? `${prev}\n\n${data.notes}` : (data.notes ?? ""),
+      );
+    }
+  }
+
   async function onSave() {
     const filled = medicines.filter((m) => m.name.trim());
     // Phase 6 rule: a record needs a photo or at least one medicine.
@@ -273,14 +350,7 @@ export function RecordForm({
       <Stack.Screen
         options={{ headerShown: true, title: t("member.newRecord") }}
       />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.flex}
-      >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
+      <KeyboardAwareScroll contentContainerStyle={styles.content}>
           {photoUri ? (
             <View>
               <Image source={{ uri: photoUri }} style={styles.photo} contentFit="cover" />
@@ -307,6 +377,26 @@ export function RecordForm({
             </Pressable>
           )}
 
+          {photoUri ? (
+            <Pressable
+              style={[
+                styles.aiAnalyzeBtn,
+                parchiiLoading && styles.aiAnalyzeBtnDisabled,
+              ]}
+              onPress={onAnalyzeWithParchii}
+              disabled={parchiiLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Analyze this prescription with ParchiiAI"
+            >
+              <Icon name="pill-fill" size={18} color={c.onPrimary} />
+              <Text style={styles.aiAnalyzeBtnText}>
+                {parchiiLoading
+                  ? "Reading with ParchiiAI..."
+                  : "Analyze with ParchiiAI"}
+              </Text>
+            </Pressable>
+          ) : null}
+
           <CameraCapture
             visible={cameraOpen}
             title={t("record.photograph")}
@@ -314,6 +404,19 @@ export function RecordForm({
             onCaptured={(uri) => {
               setPhotoUri(uri);
               setCameraOpen(false);
+            }}
+          />
+
+          <AIPrescriptionReview
+            visible={parchiiOpen}
+            result={parchiiResult}
+            loading={parchiiLoading}
+            error={parchiiError}
+            onClose={() => setParchiiOpen(false)}
+            onApply={onApplyParchiiResult}
+            onRetakeOrSelectOther={() => {
+              setParchiiOpen(false);
+              setCameraOpen(true);
             }}
           />
 
@@ -380,7 +483,11 @@ export function RecordForm({
             editable={!busy}
           />
           {doctors.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.chipWrapRow}>
                 {doctors.map((d) => (
                   <Pressable
@@ -590,8 +697,7 @@ export function RecordForm({
               <Text style={styles.buttonText}>{t("common.save")}</Text>
             )}
           </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScroll>
     </SafeAreaView>
   );
 }
@@ -662,6 +768,23 @@ const makeStyles = (c: ThemePalette) => StyleSheet.create({
     fontFamily: Fonts.body,
     textAlign: "center",
     lineHeight: 24,
+    fontSize: FontSizes.body,
+  },
+  aiAnalyzeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: c.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: Radii.lg,
+    gap: 8,
+    marginTop: 8,
+  },
+  aiAnalyzeBtnDisabled: { opacity: 0.65 },
+  aiAnalyzeBtnText: {
+    color: c.onPrimary,
+    fontFamily: Fonts.heading,
     fontSize: FontSizes.body,
   },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },

@@ -1,11 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,54 +8,66 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
+
 import { signUp } from "@/lib/auth";
 import { PRIVACY_VERSION } from "@/constants/privacy";
 import { useColors, type ThemePalette } from "@/constants/useColors";
 import { Icon } from "@/components/Icon";
+import { KeyboardAwareScroll } from "@/components/ui/KeyboardAwareScroll";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function SignupScreen() {
   const router = useRouter();
   const c = useColors();
   const styles = useMemo(() => makeStyles(c), [c]);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [focused, setFocused] = useState<"email" | "password" | "confirm" | null>(
+    null,
+  );
 
   async function onSubmit() {
     if (!email.trim() || !password) {
-      Alert.alert("Missing info", "Enter your email and password.");
+      setError("Enter your email and a password.");
       return;
     }
     if (password.length < 8) {
-      Alert.alert("Weak password", "Use at least 8 characters.");
+      setError("Use at least 8 characters for your password.");
       return;
     }
     if (password !== confirm) {
-      Alert.alert("Passwords don't match", "Re-enter to confirm.");
+      setError("The two passwords don't match yet.");
       return;
     }
-    // Consent is required before creating an account that will hold health
-    // data (docs/08 §5).
     if (!consent) {
-      Alert.alert(
-        "Consent needed",
-        "Please read and accept how your data is stored before creating an account.",
-      );
+      setError("Please accept how your data is stored before continuing.");
       return;
     }
+
+    setError(null);
+    setInfo(null);
     setBusy(true);
     try {
-      await signUp(email.trim(), password);
-      Alert.alert(
-        "Account created",
-        "If email confirmation is on, check your inbox. Otherwise you're logged in.",
-      );
-      // Auth gate handles navigation when a session exists.
+      const data = await signUp(email.trim(), password);
+      // With email confirmation on, there is no session yet. Say so instead of
+      // leaving the screen looking as if nothing happened.
+      if (!data.session) {
+        setInfo(
+          "Account created. Check your inbox to confirm your email, then log in below.",
+        );
+      }
+      // The auth gate handles navigation as soon as a session exists.
     } catch (e) {
-      Alert.alert("Sign up failed", (e as Error).message);
+      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -68,67 +75,134 @@ export default function SignupScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.inner}
-          keyboardShouldPersistTaps="handled"
+      <View style={styles.topBar}>
+        <Pressable
+          onPress={() => router.replace("/(auth)/welcome")}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.backButton,
+            { backgroundColor: c.surface, borderColor: c.border },
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Back to welcome"
         >
+          <Icon name="arrow-left" size={22} color={c.text} />
+        </Pressable>
+        <Text style={styles.topTitle}>Create account</Text>
+        <View style={styles.topSpacer} />
+      </View>
+
+      <KeyboardAwareScroll contentContainerStyle={styles.content}>
+        <View style={styles.intro}>
           <Text style={styles.title} accessibilityRole="header">
-            Create account
+            One account. Your whole family.
           </Text>
           <Text style={styles.subtitle}>
-            You&apos;ll manage your family&apos;s records
+            You&apos;ll be the family manager. The people you add are records in
+            your cabinet — never separate accounts.
           </Text>
+        </View>
 
+        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <Text style={styles.label}>Email</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Email"
+            style={[
+              styles.input,
+              focused === "email" && { borderColor: c.primary },
+            ]}
+            placeholder="you@example.com"
             placeholderTextColor={c.textSecondary}
             autoCapitalize="none"
+            autoCorrect={false}
             keyboardType="email-address"
             autoComplete="email"
+            textContentType="emailAddress"
+            selectionColor={c.primary}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            onFocus={() => setFocused("email")}
+            onBlur={() => setFocused(null)}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => {
+              setEmail(value);
+              if (error) setError(null);
+            }}
             editable={!busy}
           />
+
+          <Text style={styles.label}>Password</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Password (min 8 chars)"
+            ref={passwordRef}
+            style={[
+              styles.input,
+              focused === "password" && { borderColor: c.primary },
+            ]}
+            placeholder="At least 8 characters"
             placeholderTextColor={c.textSecondary}
             secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
+            selectionColor={c.primary}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => confirmRef.current?.focus()}
+            onFocus={() => setFocused("password")}
+            onBlur={() => setFocused(null)}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(value) => {
+              setPassword(value);
+              if (error) setError(null);
+            }}
             editable={!busy}
           />
+
+          <Text style={styles.label}>Confirm password</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Confirm password"
+            ref={confirmRef}
+            style={[
+              styles.input,
+              focused === "confirm" && { borderColor: c.primary },
+            ]}
+            placeholder="Type it once more"
             placeholderTextColor={c.textSecondary}
             secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
+            selectionColor={c.primary}
+            returnKeyType="done"
+            onSubmitEditing={onSubmit}
+            onFocus={() => setFocused("confirm")}
+            onBlur={() => setFocused(null)}
             value={confirm}
-            onChangeText={setConfirm}
+            onChangeText={(value) => {
+              setConfirm(value);
+              if (error) setError(null);
+            }}
             editable={!busy}
           />
 
           <Pressable
             style={styles.consentRow}
-            onPress={() => setConsent((v) => !v)}
+            onPress={() => setConsent((value) => !value)}
             disabled={busy}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: consent }}
-            accessibilityLabel="Accept privacy policy"
+            accessibilityState={{ checked: consent, disabled: busy }}
+            accessibilityLabel="Accept how my family's data is stored"
           >
-            <View style={[styles.checkbox, consent && styles.checkboxOn]}>
-              {consent ? (
-                <Icon name="check-bold" size={16} color={c.onPrimary} />
-              ) : null}
+            <View
+              style={[
+                styles.checkbox,
+                { borderColor: c.border },
+                consent && { backgroundColor: c.primary, borderColor: c.primary },
+              ]}
+            >
+              {consent ? <Icon name="check" size={16} color={c.onPrimary} /> : null}
             </View>
             <Text style={styles.consentText}>
-              I understand my family&apos;s health records are stored on this phone
-              and backed up to the cloud, and I accept the{" "}
+              I understand my family&apos;s health records are stored encrypted on
+              this phone and backed up to the cloud, and I accept the{" "}
               <Text
                 style={styles.consentLink}
                 onPress={() => router.push("/(main)/settings/privacy")}
@@ -139,32 +213,36 @@ export default function SignupScreen() {
             </Text>
           </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.pressed,
-              busy && styles.buttonDisabled,
-            ]}
-            onPress={onSubmit}
-            disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel="Sign up"
-          >
-            {busy ? (
-              <ActivityIndicator color={c.onPrimary} />
-            ) : (
-              <Text style={styles.buttonText}>Sign up</Text>
-            )}
-          </Pressable>
+          {error ? (
+            <Text
+              style={styles.error}
+              accessibilityLiveRegion="polite"
+              accessibilityRole="alert"
+            >
+              {error}
+            </Text>
+          ) : null}
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Have an account? </Text>
-            <Link href="/(auth)/login" style={styles.link}>
-              Log in
-            </Link>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          {info ? (
+            <Text
+              style={styles.info}
+              accessibilityLiveRegion="polite"
+              accessibilityRole="alert"
+            >
+              {info}
+            </Text>
+          ) : null}
+
+          <PrimaryButton label="Create account" onPress={onSubmit} loading={busy} />
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Have an account? </Text>
+          <Link href="/(auth)/login" style={styles.link}>
+            Log in
+          </Link>
+        </View>
+      </KeyboardAwareScroll>
     </SafeAreaView>
   );
 }
@@ -172,27 +250,62 @@ export default function SignupScreen() {
 const makeStyles = (c: ThemePalette) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
-    flex: { flex: 1 },
-    inner: {
-      flexGrow: 1,
-      justifyContent: "center",
-      paddingHorizontal: 24,
-      paddingVertical: 32,
+    topBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      minHeight: 56,
       gap: 12,
     },
+    backButton: {
+      width: 44,
+      height: 44,
+      borderRadius: Radii.pill,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    topTitle: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.body,
+      color: c.text,
+    },
+    topSpacer: { width: 44 },
+    pressed: { opacity: 0.78 },
+    content: {
+      flexGrow: 1,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 28,
+      gap: 16,
+    },
+    intro: { gap: 6 },
     title: {
       fontFamily: Fonts.headingBold,
       fontSize: FontSizes.display,
-      textAlign: "center",
       color: c.text,
-      letterSpacing: -0.4,
+      letterSpacing: -0.5,
+      lineHeight: 34,
     },
     subtitle: {
       fontFamily: Fonts.body,
       fontSize: FontSizes.body,
       color: c.textSecondary,
-      textAlign: "center",
-      marginBottom: 8,
+      lineHeight: 23,
+    },
+    card: {
+      borderRadius: Radii.xl,
+      borderWidth: 1,
+      padding: 18,
+      gap: 6,
+    },
+    label: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.label,
+      color: c.text,
+      marginTop: 6,
+      marginBottom: 4,
     },
     input: {
       borderWidth: 1,
@@ -204,27 +317,14 @@ const makeStyles = (c: ThemePalette) =>
       fontFamily: Fonts.body,
       fontSize: FontSizes.body,
       color: c.text,
-    },
-    button: {
-      backgroundColor: c.primary,
-      borderRadius: Radii.xl,
-      minHeight: Cabinet.actionHeight,
-      justifyContent: "center",
-      alignItems: "center",
-      marginTop: 4,
-    },
-    pressed: { opacity: 0.85 },
-    buttonDisabled: { opacity: 0.6 },
-    buttonText: {
-      color: c.onPrimary,
-      fontFamily: Fonts.headingSemi,
-      fontSize: FontSizes.heading,
+      marginBottom: 6,
     },
     consentRow: {
       flexDirection: "row",
       gap: 10,
       alignItems: "flex-start",
-      marginTop: 4,
+      marginTop: 10,
+      marginBottom: 8,
       minHeight: Cabinet.touchTarget,
     },
     checkbox: {
@@ -232,12 +332,10 @@ const makeStyles = (c: ThemePalette) =>
       height: 24,
       borderRadius: Radii.sm - 2,
       borderWidth: 2,
-      borderColor: c.border,
       justifyContent: "center",
       alignItems: "center",
       marginTop: 2,
     },
-    checkboxOn: { backgroundColor: c.primary, borderColor: c.primary },
     consentText: {
       flex: 1,
       fontFamily: Fonts.body,
@@ -249,7 +347,27 @@ const makeStyles = (c: ThemePalette) =>
       color: c.primary,
       fontFamily: Fonts.bodyMedium,
     },
-    footer: { flexDirection: "row", justifyContent: "center", marginTop: 8 },
+    error: {
+      fontFamily: Fonts.bodyMedium,
+      fontSize: FontSizes.label,
+      color: c.danger,
+      lineHeight: 20,
+      marginBottom: 4,
+    },
+    info: {
+      fontFamily: Fonts.bodyMedium,
+      fontSize: FontSizes.label,
+      color: c.successText,
+      lineHeight: 20,
+      marginBottom: 4,
+    },
+    footer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      flexWrap: "wrap",
+      minHeight: Cabinet.touchTarget,
+    },
     footerText: {
       color: c.textSecondary,
       fontFamily: Fonts.body,
@@ -259,5 +377,7 @@ const makeStyles = (c: ThemePalette) =>
       color: c.primary,
       fontFamily: Fonts.headingSemi,
       fontSize: FontSizes.label,
+      paddingVertical: 12,
+      paddingHorizontal: 4,
     },
   });

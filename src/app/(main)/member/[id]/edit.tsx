@@ -2,10 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -30,6 +27,7 @@ import {
 } from "@/constants/avatars";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
+import { KeyboardAwareScroll } from "@/components/ui/KeyboardAwareScroll";
 import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function EditMemberScreen() {
@@ -161,14 +159,7 @@ export default function EditMemberScreen() {
           headerStyle: { backgroundColor: c.background },
         }}
       />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.flex}
-      >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
+      <KeyboardAwareScroll contentContainerStyle={styles.content}>
           <Text style={styles.label}>Avatar</Text>
           <View style={styles.avatarRow}>
             {AVATAR_PRESETS.map((a) => (
@@ -195,9 +186,13 @@ export default function EditMemberScreen() {
           <Text style={styles.label}>Name *</Text>
           <TextInput
             style={styles.input}
+            placeholder="e.g. Ammi"
+            placeholderTextColor={c.textSecondary}
             value={name}
             onChangeText={setName}
             editable={!busy}
+            returnKeyType="done"
+            selectionColor={c.primary}
           />
 
           <Text style={styles.label}>Relation</Text>
@@ -220,10 +215,14 @@ export default function EditMemberScreen() {
           <Text style={styles.label}>Age</Text>
           <TextInput
             style={styles.input}
+            placeholder="Optional"
+            placeholderTextColor={c.textSecondary}
             keyboardType="number-pad"
             value={age}
             onChangeText={setAge}
             editable={!busy}
+            returnKeyType="done"
+            selectionColor={c.primary}
           />
 
           <Text style={styles.label}>Gender</Text>
@@ -271,12 +270,10 @@ export default function EditMemberScreen() {
             <Icon name="trash" size={20} color={c.danger} />
             <Text style={styles.deleteText}>Delete member</Text>
           </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScroll>
     </View>
   );
 }
-
 const makeStyles = (c: ThemePalette, bottomInset: number) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },

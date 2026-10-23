@@ -21,8 +21,11 @@ SplashScreen.preventAutoHideAsync();
 
 /**
  * Auth gate: redirect based on session.
- * - logged in  -> (main)  (family grid — opens instantly, offline-friendly)
- * - logged out -> (auth)  (login)
+ * - logged in  -> (main)  (family dashboard — opens instantly, offline-friendly)
+ * - logged out -> (auth)/welcome  (brand intro with Get started / Sign in)
+ *
+ * Any auth route is allowed while signed out, so login and signup are never
+ * bounced back to the welcome screen.
  */
 function useProtectedRoute() {
   const { session, loading } = useAuth();
@@ -32,9 +35,13 @@ function useProtectedRoute() {
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === "(auth)";
+    // The privacy policy must be readable before an account exists — the
+    // signup consent link opens it from the auth flow.
+    const isPublicPrivacy =
+      segments[1] === "settings" && segments[2] === "privacy";
 
-    if (!session && !inAuthGroup) {
-      router.replace("/(auth)/login");
+    if (!session && !inAuthGroup && !isPublicPrivacy) {
+      router.replace("/(auth)/welcome");
     } else if (session && inAuthGroup) {
       router.replace("/(main)");
     }
