@@ -1,5 +1,8 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { useColors, type ThemePalette } from "@/constants/useColors";
+import { FontSizes, FontWeights, Ledger } from "@/constants/theme";
 import type { SyncStatusInfo } from "@/lib/use-sync-status";
 
 /**
@@ -12,10 +15,13 @@ import type { SyncStatusInfo } from "@/lib/use-sync-status";
  * would be noise. Only un-backed-up writes and real failures surface.
  */
 export function SyncBanner({ status }: { status: SyncStatusInfo }) {
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
+
   if (status.state === "error") {
     return (
       <View style={[styles.bar, styles.error]}>
-        <Text style={styles.text} numberOfLines={2}>
+        <Text style={[styles.text, styles.errorText]} numberOfLines={2}>
           Sync problem. Your records are safe on this phone — we&apos;ll keep
           trying to back them up.
         </Text>
@@ -27,7 +33,7 @@ export function SyncBanner({ status }: { status: SyncStatusInfo }) {
     const n = status.pendingUploads;
     return (
       <View style={[styles.bar, styles.pending]}>
-        <Text style={styles.text} numberOfLines={1}>
+        <Text style={[styles.text, styles.pendingText]} numberOfLines={1}>
           {n === 1
             ? "1 change waiting to back up"
             : `${n} changes waiting to back up`}
@@ -39,7 +45,7 @@ export function SyncBanner({ status }: { status: SyncStatusInfo }) {
   if (status.state === "syncing") {
     return (
       <View style={[styles.bar, styles.syncing]}>
-        <Text style={styles.text} numberOfLines={1}>
+        <Text style={[styles.text, styles.syncingText]} numberOfLines={1}>
           Backing up…
         </Text>
       </View>
@@ -49,10 +55,19 @@ export function SyncBanner({ status }: { status: SyncStatusInfo }) {
   return null;
 }
 
-const styles = StyleSheet.create({
-  bar: { paddingHorizontal: 20, paddingVertical: 6 },
-  syncing: { backgroundColor: "#EAF3FE" },
-  pending: { backgroundColor: "#FFF4E0" },
-  error: { backgroundColor: "#FDECEA" },
-  text: { fontSize: 12, color: "#40454D" },
-});
+const makeStyles = (c: ThemePalette) =>
+  StyleSheet.create({
+    bar: {
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+      borderBottomWidth: Ledger.rule,
+      borderBottomColor: c.border,
+    },
+    syncing: { backgroundColor: c.infoSurface },
+    pending: { backgroundColor: c.warningSurface },
+    error: { backgroundColor: c.surface },
+    text: { fontSize: FontSizes.caption, fontWeight: FontWeights.label },
+    syncingText: { color: c.infoText },
+    pendingText: { color: c.warningText },
+    errorText: { color: c.danger },
+  });

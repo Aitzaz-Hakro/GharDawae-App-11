@@ -7,11 +7,13 @@ import {
   useSegments,
 } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { ActivityIndicator, useColorScheme, View } from "react-native";
 
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { usePowerSyncSync } from "@/lib/powersync/sync";
+import { Colors } from "@/constants/theme";
+import { useColors } from "@/constants/useColors";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,6 +41,7 @@ function useProtectedRoute() {
 
 function RootNavigator() {
   const { loading } = useAuth();
+  const c = useColors();
   useProtectedRoute();
   // Connect local PowerSync DB <-> Supabase whenever signed in (no-op offline).
   usePowerSyncSync();
@@ -49,8 +52,15 @@ function RootNavigator() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: c.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={c.primary} />
       </View>
     );
   }
@@ -63,10 +73,35 @@ function RootNavigator() {
   );
 }
 
+/**
+ * Expo Router's own theme object drives navigator backgrounds and the system
+ * header. Left at the defaults it paints iOS blue and pure white over a themed
+ * app, so it is derived from the same palette as everything else.
+ */
+function useNavigationTheme() {
+  const scheme = useColorScheme();
+  const palette = Colors[scheme === "dark" ? "dark" : "light"];
+  return useMemo(() => {
+    const base = scheme === "dark" ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: palette.primary,
+        background: palette.background,
+        card: palette.surface,
+        text: palette.text,
+        border: palette.border,
+        notification: palette.accent,
+      },
+    };
+  }, [scheme, palette]);
+}
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const theme = useNavigationTheme();
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={theme}>
       <AuthProvider>
         <RootNavigator />
       </AuthProvider>

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
+import { useColors, type ThemePalette } from "@/constants/useColors";
+import { MedicineLine } from "@/components/Ledger";
 import {
   deletePrescription,
   formatVisitDate,
@@ -22,9 +24,12 @@ import {
 } from "@/lib/records";
 import { deletePhoto } from "@/lib/photo";
 import { usePhotoSource } from "@/lib/use-photo-source";
+import { FontSizes, FontWeights, Radii } from "@/constants/theme";
 
 export default function RecordDetailScreen() {
   const router = useRouter();
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [record, setRecord] = useState<Prescription | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -139,13 +144,14 @@ export default function RecordDetailScreen() {
             <Text style={styles.muted}>No medicines recorded.</Text>
           ) : (
             medicines.map((m) => (
-              <View key={m.id} style={styles.medicineRow}>
-                <Text style={styles.medicineName}>{m.name}</Text>
-                <Text style={styles.medicineMeta}>
-                  {[m.dosage, m.frequency, m.duration].filter(Boolean).join(" · ") ||
-                    "No dosage noted"}
-                </Text>
-              </View>
+              <MedicineLine
+                key={m.id}
+                name={m.name}
+                dosage={m.dosage}
+                frequency={m.frequency}
+                duration={m.duration}
+                size="large"
+              />
             ))
           )}
         </View>
@@ -165,25 +171,45 @@ export default function RecordDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  error: { color: "#C0392B", textAlign: "center" },
-  content: { padding: 20, paddingBottom: 48 },
-  photo: { width: "100%", height: 260, borderRadius: 12, backgroundColor: "#F0F0F3" },
-  noPhoto: { justifyContent: "center", alignItems: "center" },
-  noPhotoText: { color: "#60646C" },
-  section: { marginTop: 20 },
-  label: { fontSize: 13, fontWeight: "700", color: "#60646C", textTransform: "uppercase" },
-  value: { fontSize: 16, marginTop: 4 },
-  muted: { fontSize: 15, color: "#9096A0", marginTop: 4 },
-  medicineRow: {
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E3E5E9",
+const makeStyles = (c: ThemePalette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+    backgroundColor: c.background,
   },
-  medicineName: { fontSize: 16, fontWeight: "600" },
-  medicineMeta: { fontSize: 14, color: "#60646C", marginTop: 2 },
-  deleteButton: { marginTop: 32, paddingVertical: 14, alignItems: "center" },
-  deleteText: { color: "#C0392B", fontWeight: "600", fontSize: 16 },
+  error: { color: c.danger, textAlign: "center" },
+  content: { padding: 20, paddingBottom: 48 },
+  photo: {
+    width: "100%",
+    height: 260,
+    borderRadius: Radii.md,
+    backgroundColor: c.surface,
+  },
+  noPhoto: { justifyContent: "center", alignItems: "center" },
+  noPhotoText: { color: c.textSecondary, fontSize: FontSizes.label },
+  section: { marginTop: 22 },
+  label: {
+    fontSize: FontSizes.caption,
+    fontWeight: "700",
+    color: c.textSecondary,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  value: { fontSize: FontSizes.body, marginTop: 4, color: c.text },
+  muted: { fontSize: FontSizes.label, color: c.textSecondary, marginTop: 6 },
+  deleteButton: {
+    marginTop: 36,
+    paddingVertical: 14,
+    alignItems: "center",
+    minHeight: 48,
+    justifyContent: "center",
+  },
+  deleteText: {
+    color: c.danger,
+    fontWeight: FontWeights.heading,
+    fontSize: FontSizes.body,
+  },
 });
