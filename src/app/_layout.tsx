@@ -6,6 +6,7 @@ import {
   useRouter,
   useSegments,
 } from "expo-router";
+import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useMemo } from "react";
 import { ActivityIndicator, useColorScheme, View } from "react-native";
@@ -100,6 +101,21 @@ function useNavigationTheme() {
 
 export default function RootLayout() {
   const theme = useNavigationTheme();
+  // Each weight is a separate family: React Native synthesises bold badly on
+  // Android, so the app never asks a 700 file for fontWeight 700.
+  const [fontsLoaded, fontError] = useFonts({
+    SourceSans3_400: require("../../assets/fonts/SourceSans3-400.ttf"),
+    SourceSans3_600: require("../../assets/fonts/SourceSans3-600.ttf"),
+    SourceSans3_700: require("../../assets/fonts/SourceSans3-700.ttf"),
+    NunitoSans_600: require("../../assets/fonts/NunitoSans-600.ttf"),
+    NunitoSans_700: require("../../assets/fonts/NunitoSans-700.ttf"),
+    NunitoSans_800: require("../../assets/fonts/NunitoSans-800.ttf"),
+  });
+
+  // A font failure must never block the offline path (design non-negotiable 1):
+  // fall back to system type rather than trapping the user on the splash.
+  if (!fontsLoaded && !fontError) return null;
+
   return (
     <ThemeProvider value={theme}>
       <AuthProvider>

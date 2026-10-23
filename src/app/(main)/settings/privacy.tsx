@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
@@ -9,15 +9,23 @@ import {
   PRIVACY_TITLE,
   PRIVACY_VERSION,
 } from "@/constants/privacy";
-import { FontSizes, FontWeights, Ledger } from "@/constants/theme";
+import { Cabinet, FontSizes, Fonts } from "@/constants/theme";
 
 export default function PrivacyScreen() {
   const c = useColors();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(c, insets.bottom), [c, insets.bottom]);
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <Stack.Screen options={{ headerShown: true, title: PRIVACY_TITLE }} />
+    <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: PRIVACY_TITLE,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: c.background },
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         {PRIVACY_SECTIONS.map((s) => (
           <View key={s.heading} style={styles.section}>
@@ -27,33 +35,39 @@ export default function PrivacyScreen() {
         ))}
         <Text style={styles.version}>Version {PRIVACY_VERSION}</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const makeStyles = (c: ThemePalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  content: { padding: 20, paddingBottom: 48 },
-  section: {
-    marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: Ledger.rule,
-    borderBottomColor: c.border,
-  },
-  heading: {
-    fontSize: FontSizes.heading,
-    fontWeight: FontWeights.heading,
-    color: c.text,
-    marginBottom: 6,
-  },
-  body: {
-    fontSize: FontSizes.label + 1,
-    color: c.textSecondary,
-    lineHeight: 23,
-  },
-  version: {
-    fontSize: FontSizes.caption,
-    color: c.textSecondary,
-    marginTop: 8,
-  },
-});
+const makeStyles = (c: ThemePalette, bottomInset: number) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    content: {
+      paddingHorizontal: Cabinet.gutter,
+      paddingBottom: bottomInset + 48,
+    },
+    section: {
+      marginBottom: 24,
+      paddingBottom: 20,
+      borderBottomWidth: Cabinet.rule,
+      borderBottomColor: c.border,
+    },
+    heading: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+      color: c.text,
+      marginBottom: 6,
+    },
+    body: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+      lineHeight: 24,
+    },
+    version: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.caption,
+      color: c.textSecondary,
+      marginTop: 8,
+    },
+  });

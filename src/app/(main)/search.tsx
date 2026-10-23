@@ -17,9 +17,8 @@ import { resolveFamily } from "@/lib/family";
 import { search, type SearchHit } from "@/lib/search";
 import { formatVisitDate } from "@/lib/records";
 import { Avatar } from "@/components/Avatar";
-import { MedicineLine } from "@/components/Ledger";
-import { Magnifier } from "@/components/Magnifier";
-import { FontSizes, FontWeights, Ledger, Radii } from "@/constants/theme";
+import { Icon } from "@/components/Icon";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 type Family = { id: string };
 
@@ -85,14 +84,21 @@ export default function SearchScreen() {
   const results = query.trim().length === 0 ? [] : hits;
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <Stack.Screen options={{ headerShown: true, title: "Search" }} />
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "Search",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: c.background },
+        }}
+      />
 
       <View style={styles.searchBar}>
-        <Magnifier size={17} color={c.textSecondary} />
+        <Icon name="magnifying-glass" size={22} color={c.textSecondary} />
         <TextInput
           style={styles.input}
-          placeholder="Medicine, doctor, member…"
+          placeholder="Search people, records, medicines"
           placeholderTextColor={c.textSecondary}
           value={query}
           onChangeText={setQuery}
@@ -103,7 +109,7 @@ export default function SearchScreen() {
         />
       </View>
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {query.trim().length === 0 ? (
         <Text style={styles.hint}>
@@ -141,14 +147,16 @@ function HitRow({
   if (hit.kind === "member") {
     return (
       <Pressable
-        style={styles.row}
+        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
         onPress={() => onOpen(`/(main)/member/${hit.id}`)}
+        accessibilityRole="button"
+        accessibilityLabel={`${hit.name}${hit.relation ? `, ${hit.relation}` : ""}`}
       >
         <Avatar
           name={hit.name}
           type={hit.avatarType}
           value={hit.avatarValue}
-          size={40}
+          size={44}
         />
         <View style={styles.rowBody}>
           <Text style={styles.title}>{hit.name}</Text>
@@ -163,14 +171,16 @@ function HitRow({
   if (hit.kind === "record") {
     return (
       <Pressable
-        style={styles.row}
+        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
         onPress={() => onOpen(`/(main)/record/${hit.id}`)}
+        accessibilityRole="button"
+        accessibilityLabel={`Prescription for ${hit.memberName}, ${formatVisitDate(hit.visitDate)}`}
       >
         <View style={styles.kindMark}>
-          <Text style={styles.kindMarkText}>Rx</Text>
+          <Icon name="pill-fill" size={22} color={c.textSecondary} />
         </View>
         <View style={styles.rowBody}>
-          <Text style={styles.title}>
+          <Text style={styles.title} numberOfLines={1}>
             {hit.doctorName || "Prescription"} · {hit.memberName}
           </Text>
           <Text style={styles.sub}>
@@ -181,91 +191,127 @@ function HitRow({
     );
   }
 
+  // A medicine is always name, dosage, frequency, duration — in that order.
+  const facts = [hit.dosage, hit.frequency, hit.duration].filter(Boolean);
   return (
     <Pressable
-      style={styles.medicineHit}
+      style={({ pressed }) => [styles.medicineHit, pressed && styles.pressed]}
       onPress={() => onOpen(`/(main)/record/${hit.recordId}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`${hit.name}${facts.length ? `, ${facts.join(", ")}` : ""}, from ${hit.memberName}'s record on ${formatVisitDate(hit.visitDate)}`}
     >
       <Text style={styles.medicineContext}>
         {hit.memberName} · {formatVisitDate(hit.visitDate)}
       </Text>
-      <View pointerEvents="none">
-        <MedicineLine
-          name={hit.name}
-          dosage={hit.dosage}
-          frequency={hit.frequency}
-          duration={hit.duration}
-        />
-      </View>
+      <Text style={styles.medicineName}>{hit.name}</Text>
+      <Text style={styles.medicineFacts} numberOfLines={1}>
+        {facts.length > 0 ? facts.join("  ·  ") : "No dosage recorded"}
+      </Text>
     </Pressable>
   );
 }
 
-const makeStyles = (c: ThemePalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: c.border,
-    borderRadius: Radii.md,
-    paddingHorizontal: 14,
-    minHeight: 48,
-    fontSize: FontSizes.body,
-    color: c.text,
-  },
-  error: { color: c.danger, paddingHorizontal: 20, paddingTop: 8 },
-  hint: {
-    textAlign: "center",
-    color: c.textSecondary,
-    marginTop: 40,
-    paddingHorizontal: 32,
-    fontSize: FontSizes.body,
-    lineHeight: 24,
-  },
-  spinner: { marginTop: 40 },
-  list: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "center",
-    paddingVertical: 12,
-    minHeight: 56,
-    borderBottomWidth: Ledger.rule,
-    borderBottomColor: c.border,
-  },
-  kindMark: {
-    width: 40,
-    height: 40,
-    borderRadius: Radii.pill,
-    backgroundColor: c.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  kindMarkText: {
-    fontSize: FontSizes.caption,
-    fontWeight: "700",
-    color: c.textSecondary,
-  },
-  rowBody: { flex: 1 },
-  title: {
-    fontSize: FontSizes.body,
-    fontWeight: FontWeights.heading,
-    color: c.text,
-  },
-  sub: { fontSize: FontSizes.label, color: c.textSecondary, marginTop: 2 },
-  medicineHit: { paddingTop: 10 },
-  medicineContext: {
-    fontSize: FontSizes.caption,
-    fontWeight: "700",
-    color: c.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-});
+const makeStyles = (c: ThemePalette) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginHorizontal: Cabinet.gutter,
+      marginTop: 4,
+      paddingHorizontal: 16,
+      minHeight: 56,
+      borderRadius: Radii.xl,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.input,
+    },
+    input: {
+      flex: 1,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.text,
+      minHeight: 54,
+    },
+    error: {
+      color: c.danger,
+      paddingHorizontal: Cabinet.gutter,
+      paddingTop: 8,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+    },
+    hint: {
+      textAlign: "center",
+      color: c.textSecondary,
+      marginTop: 40,
+      paddingHorizontal: 32,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      lineHeight: 24,
+    },
+    spinner: { marginTop: 40 },
+    list: {
+      paddingHorizontal: Cabinet.gutter,
+      paddingTop: 16,
+      paddingBottom: 40,
+      gap: 10,
+    },
+    card: {
+      flexDirection: "row",
+      gap: 12,
+      alignItems: "center",
+      padding: 14,
+      minHeight: 64,
+      borderRadius: Cabinet.blockRadius,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+    },
+    pressed: { opacity: 0.8 },
+    kindMark: {
+      width: 44,
+      height: 44,
+      borderRadius: Radii.pill,
+      backgroundColor: c.surfaceSelected,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rowBody: { flex: 1 },
+    title: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.body,
+      color: c.text,
+    },
+    sub: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+      color: c.textSecondary,
+      marginTop: 2,
+    },
+    medicineHit: {
+      padding: 14,
+      borderRadius: Cabinet.blockRadius,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      gap: 2,
+    },
+    medicineContext: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+      color: c.textSecondary,
+    },
+    medicineName: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+      color: c.text,
+      marginTop: 2,
+    },
+    medicineFacts: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+      fontVariant: ["tabular-nums"],
+    },
+  });

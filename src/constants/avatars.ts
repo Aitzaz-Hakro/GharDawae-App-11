@@ -1,19 +1,17 @@
 // Family member identities (docs/06: avatar_type = 'preset').
 //
-// Avatars are MONOGRAMS, not emoji. Why:
-//  - The default Android font renders 👴/👵 as a white or yellow face, which
-//    reads wrong for a Pakistani family app and looked like a toy.
-//  - A letter + tint stays legible at 44sp avatar size, on low-end screens, and
-//    in dark mode, and it is what a ledger would print: an initial in a stamp.
-// Stored `avatar_value` is the tint id (e.g. "teal"); the letter comes from the
-// member's name at render time. Emoji ids stored before this change still
-// resolve, so existing rows keep a sensible avatar.
+// Bundled DiceBear Open Peeps portraits sit on a fixed person colour. The same
+// tint follows a person into their record blocks, in both light and dark mode.
+// Replace assets/avatars/<id>.svg to change the picture without changing data.
+// Stored avatar_value remains the tint id; old emoji ids still resolve.
+
+import type { ImageSource } from "expo-image";
 
 export type AvatarTint = {
   id: string;
-  /** Swatch behind the letter (light mode). */
+  /** Swatch behind the portrait. Same value in light and dark. */
   background: string;
-  /** The letter itself (light mode). */
+  /** Ink for the vector fallback. */
   ink: string;
   /** Same pair, dark mode. */
   backgroundDark: string;
@@ -22,31 +20,47 @@ export type AvatarTint = {
 
 /** Eight tints — enough to tell a family apart without turning into confetti. */
 export const AVATAR_TINTS: AvatarTint[] = [
-  { id: "teal", background: "#DCEEEC", ink: "#0A5A52", backgroundDark: "#12302C", inkDark: "#8CE0D5" },
-  { id: "clay", background: "#FBE3D8", ink: "#8A3A1B", backgroundDark: "#33190F", inkDark: "#FFB392" },
-  { id: "sand", background: "#F3E9CF", ink: "#6B5316", backgroundDark: "#2C2615", inkDark: "#DFC98C" },
-  { id: "sage", background: "#DFEBDD", ink: "#3B5F38", backgroundDark: "#1B2A1A", inkDark: "#A8D3A2" },
-  { id: "sky", background: "#DCE8F5", ink: "#274F7A", backgroundDark: "#16232F", inkDark: "#A6C8E8" },
-  { id: "lilac", background: "#E7E1F2", ink: "#4A3A6B", backgroundDark: "#211D2C", inkDark: "#C3B2E4" },
-  { id: "rose", background: "#F6DDE2", ink: "#7A2F40", backgroundDark: "#2E181D", inkDark: "#E9ADBA" },
-  { id: "slate", background: "#E4E7EB", ink: "#3A424C", backgroundDark: "#1E2329", inkDark: "#B7C0CA" },
+  // white on #B65C3F = 4.57:1
+  { id: "clay", background: "#B65C3F", ink: "#FFFFFF", backgroundDark: "#B65C3F", inkDark: "#FFFFFF" },
+  // white on #966F21 = 4.57:1
+  { id: "sand", background: "#966F21", ink: "#FFFFFF", backgroundDark: "#966F21", inkDark: "#FFFFFF" },
+  // white on #38807C = 4.62:1
+  { id: "teal", background: "#38807C", ink: "#FFFFFF", backgroundDark: "#38807C", inkDark: "#FFFFFF" },
+  // white on #8A5A9E = 5.20:1
+  { id: "lilac", background: "#8A5A9E", ink: "#FFFFFF", backgroundDark: "#8A5A9E", inkDark: "#FFFFFF" },
+  // white on #C24E75 = 4.53:1
+  { id: "rose", background: "#C24E75", ink: "#FFFFFF", backgroundDark: "#C24E75", inkDark: "#FFFFFF" },
+  // white on #5A7F55 = 4.56:1
+  { id: "sage", background: "#5A7F55", ink: "#FFFFFF", backgroundDark: "#5A7F55", inkDark: "#FFFFFF" },
+  // white on #467BA5 = 4.53:1
+  { id: "sky", background: "#467BA5", ink: "#FFFFFF", backgroundDark: "#467BA5", inkDark: "#FFFFFF" },
+  // white on #6B7280 = 4.83:1
+  { id: "slate", background: "#6B7280", ink: "#FFFFFF", backgroundDark: "#6B7280", inkDark: "#FFFFFF" },
 ];
 
 export function avatarTint(id: string | null | undefined): AvatarTint {
   return AVATAR_TINTS.find((t) => t.id === id) ?? AVATAR_TINTS[0];
 }
 
-/**
- * One or two characters for the stamp. First letter of the first and last word
- * ("Ammi" -> A, "Zara Khan" -> ZK), upper-cased. Scripts without case (Urdu)
- * are returned unchanged, which is correct.
- */
-export function avatarInitials(name: string | null | undefined): string {
-  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  const first = words[0]?.[0] ?? "?";
-  const last = words.length > 1 ? words[words.length - 1][0] : "";
-  return (first + last).toUpperCase();
+/** Static requires let Metro include every replaceable SVG in the app bundle. */
+export const AVATAR_PRESETS: {
+  id: string;
+  label: string;
+  source: ImageSource | number;
+}[] = [
+  { id: "clay", label: "Clay", source: require("../../assets/avatars/clay.svg") },
+  { id: "sand", label: "Sand", source: require("../../assets/avatars/sand.svg") },
+  { id: "teal", label: "Teal", source: require("../../assets/avatars/teal.svg") },
+  { id: "lilac", label: "Lilac", source: require("../../assets/avatars/lilac.svg") },
+  { id: "rose", label: "Rose", source: require("../../assets/avatars/rose.svg") },
+  { id: "sage", label: "Sage", source: require("../../assets/avatars/sage.svg") },
+  { id: "sky", label: "Sky", source: require("../../assets/avatars/sky.svg") },
+  { id: "slate", label: "Slate", source: require("../../assets/avatars/slate.svg") },
+];
+
+export function avatarPresetForStoredValue(value: string | null | undefined) {
+  const tint = avatarTintForStoredValue(value);
+  return AVATAR_PRESETS.find((preset) => preset.id === tint.id) ?? AVATAR_PRESETS[0];
 }
 
 /**

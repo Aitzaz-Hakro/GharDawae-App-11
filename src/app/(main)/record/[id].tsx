@@ -8,12 +8,13 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
-import { MedicineLine } from "@/components/Ledger";
+import { MedicineCard } from "@/components/Cabinet";
+import { Icon } from "@/components/Icon";
 import {
   deletePrescription,
   formatVisitDate,
@@ -24,12 +25,13 @@ import {
 } from "@/lib/records";
 import { deletePhoto } from "@/lib/photo";
 import { usePhotoSource } from "@/lib/use-photo-source";
-import { FontSizes, FontWeights, Radii } from "@/constants/theme";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function RecordDetailScreen() {
   const router = useRouter();
   const c = useColors();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(c, insets.bottom), [c, insets.bottom]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [record, setRecord] = useState<Prescription | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -89,127 +91,206 @@ export default function RecordDetailScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={c.primary} />
       </View>
     );
   }
 
   if (!record) {
     return (
-      <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <View style={styles.container}>
         <Stack.Screen options={{ headerShown: true, title: "Record" }} />
         <View style={styles.center}>
           <Text style={styles.error}>{error ?? "This record no longer exists."}</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <View style={styles.container}>
       <Stack.Screen
-        options={{ headerShown: true, title: formatVisitDate(record.visit_date) }}
+        options={{
+          headerShown: true,
+          title: "",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: c.background },
+        }}
       />
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.dateLabel}>Visit date</Text>
+        <Text style={styles.date} accessibilityRole="header">
+          {formatVisitDate(record.visit_date)}
+        </Text>
+
         {uri ? (
           <Image source={{ uri }} style={styles.photo} contentFit="cover" />
         ) : (
           <View style={[styles.photo, styles.noPhoto]}>
+            <Icon name="pill-fill" size={32} color={c.textSecondary} />
             <Text style={styles.noPhotoText}>No photo for this record</Text>
           </View>
         )}
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Doctor</Text>
-          <Text style={styles.value}>{record.doctor_name || "—"}</Text>
+        <View style={styles.card}>
+          <Row label="Doctor" value={record.doctor_name || "—"} c={c} />
+          <View style={styles.rule} />
+          <Row label="Visit date" value={formatVisitDate(record.visit_date)} c={c} />
+          {record.diagnosis_note ? (
+            <>
+              <View style={styles.rule} />
+              <Row label="Diagnosis" value={record.diagnosis_note} c={c} />
+            </>
+          ) : null}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Visit date</Text>
-          <Text style={styles.value}>{formatVisitDate(record.visit_date)}</Text>
-        </View>
-
-        {record.diagnosis_note ? (
-          <View style={styles.section}>
-            <Text style={styles.label}>Diagnosis</Text>
-            <Text style={styles.value}>{record.diagnosis_note}</Text>
+        <Text style={styles.sectionTitle}>
+          {medicines.length > 0 ? `Medicines · ${medicines.length}` : "Medicines"}
+        </Text>
+        {medicines.length === 0 ? (
+          <Text style={styles.muted}>No medicines recorded.</Text>
+        ) : (
+          <View style={styles.medicineList}>
+            {medicines.map((m) => (
+              <MedicineCard key={m.id} medicine={m} />
+            ))}
           </View>
-        ) : null}
-
-        <View style={styles.section}>
-          <Text style={styles.label}>
-            Medicines {medicines.length > 0 ? `(${medicines.length})` : ""}
-          </Text>
-          {medicines.length === 0 ? (
-            <Text style={styles.muted}>No medicines recorded.</Text>
-          ) : (
-            medicines.map((m) => (
-              <MedicineLine
-                key={m.id}
-                name={m.name}
-                dosage={m.dosage}
-                frequency={m.frequency}
-                duration={m.duration}
-                size="large"
-              />
-            ))
-          )}
-        </View>
+        )}
 
         {record.notes ? (
-          <View style={styles.section}>
-            <Text style={styles.label}>Notes</Text>
-            <Text style={styles.value}>{record.notes}</Text>
-          </View>
+          <>
+            <Text style={styles.sectionTitle}>Notes</Text>
+            <View style={styles.card}>
+              <Text style={styles.noteText}>{record.notes}</Text>
+            </View>
+          </>
         ) : null}
 
-        <Pressable style={styles.deleteButton} onPress={onDelete}>
+        <Pressable
+          style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
+          onPress={onDelete}
+          accessibilityRole="button"
+          accessibilityLabel="Delete this record"
+        >
+          <Icon name="trash" size={20} color={c.danger} />
           <Text style={styles.deleteText}>Delete record</Text>
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const makeStyles = (c: ThemePalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-    backgroundColor: c.background,
-  },
-  error: { color: c.danger, textAlign: "center" },
-  content: { padding: 20, paddingBottom: 48 },
-  photo: {
-    width: "100%",
-    height: 260,
-    borderRadius: Radii.md,
-    backgroundColor: c.surface,
-  },
-  noPhoto: { justifyContent: "center", alignItems: "center" },
-  noPhotoText: { color: c.textSecondary, fontSize: FontSizes.label },
-  section: { marginTop: 22 },
-  label: {
-    fontSize: FontSizes.caption,
-    fontWeight: "700",
-    color: c.textSecondary,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  value: { fontSize: FontSizes.body, marginTop: 4, color: c.text },
-  muted: { fontSize: FontSizes.label, color: c.textSecondary, marginTop: 6 },
-  deleteButton: {
-    marginTop: 36,
-    paddingVertical: 14,
-    alignItems: "center",
-    minHeight: 48,
-    justifyContent: "center",
-  },
-  deleteText: {
-    color: c.danger,
-    fontWeight: FontWeights.heading,
-    fontSize: FontSizes.body,
-  },
-});
+/** One labelled fact inside a card. */
+function Row({
+  label,
+  value,
+  c,
+}: {
+  label: string;
+  value: string;
+  c: ThemePalette;
+}) {
+  return (
+    <View>
+      <Text style={{ fontFamily: Fonts.body, fontSize: FontSizes.label, color: c.textSecondary }}>
+        {label}
+      </Text>
+      <Text style={{ fontFamily: Fonts.bodyMedium, fontSize: FontSizes.body, color: c.text, marginTop: 2 }}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+const makeStyles = (c: ThemePalette, bottomInset: number) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+      backgroundColor: c.background,
+    },
+    error: {
+      color: c.danger,
+      textAlign: "center",
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+    },
+    content: {
+      paddingHorizontal: Cabinet.gutter,
+      paddingBottom: bottomInset + 40,
+    },
+    dateLabel: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+    },
+    date: {
+      fontFamily: Fonts.headingBold,
+      fontSize: FontSizes.recordDate,
+      color: c.text,
+      fontVariant: ["tabular-nums"],
+      letterSpacing: -0.4,
+      marginBottom: 16,
+    },
+    photo: {
+      width: "100%",
+      height: 260,
+      borderRadius: Cabinet.cardRadius,
+      backgroundColor: c.surface,
+    },
+    noPhoto: { justifyContent: "center", alignItems: "center", gap: 8 },
+    noPhotoText: {
+      color: c.textSecondary,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+    },
+    card: {
+      marginTop: 16,
+      borderRadius: Cabinet.blockRadius,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      padding: 16,
+      gap: 12,
+    },
+    rule: { height: Cabinet.rule, backgroundColor: c.border },
+    sectionTitle: {
+      fontFamily: Fonts.heading,
+      fontSize: FontSizes.title,
+      color: c.text,
+      marginTop: 28,
+      marginBottom: 12,
+    },
+    medicineList: { gap: Cabinet.gap },
+    muted: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+    },
+    noteText: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.text,
+      lineHeight: 24,
+    },
+    deleteButton: {
+      marginTop: 36,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      minHeight: Cabinet.actionHeight,
+      borderRadius: Radii.xl,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    pressed: { opacity: 0.8 },
+    deleteText: {
+      color: c.danger,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.body,
+    },
+  });

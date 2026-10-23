@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 import { useMemo } from "react";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
-import { FontSizes, FontWeights } from "@/constants/theme";
+import { FontSizes, Fonts } from "@/constants/theme";
 
 /**
  * Native-stack chrome, themed. Without this the header stays iOS-system blue
@@ -25,7 +25,7 @@ function makeScreenOptions(c: ThemePalette) {
     headerTitleStyle: {
       color: c.text,
       fontSize: FontSizes.heading,
-      fontWeight: FontWeights.heading,
+      fontFamily: Fonts.headingSemi,
     },
     headerShadowVisible: false,
     headerBackTitle: "Back",

@@ -21,7 +21,8 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
-import { FontSizes, FontWeights, Radii } from "@/constants/theme";
+import { Icon } from "@/components/Icon";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export type CameraCaptureProps = {
   visible: boolean;
@@ -116,8 +117,11 @@ export function CameraCapture({
             />
             <SafeAreaView style={styles.overlay} edges={["top", "bottom"]}>
               <View style={styles.topBar}>
-                <Pressable style={styles.topButton} onPress={close} hitSlop={8}>
-                  <Text style={styles.topButtonText}>✕</Text>
+                <Pressable style={styles.topButton} onPress={close} hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close camera"
+                >
+                  <Icon name="x" size={22} color="#FFFFFF" />
                 </Pressable>
                 <Text style={styles.topTitle}>{title}</Text>
                 <View style={styles.topButton} />
@@ -177,6 +181,7 @@ const makeStyles = (c: ThemePalette) =>
       backgroundColor: c.background,
     },
     permissionText: {
+      fontFamily: Fonts.body,
       fontSize: FontSizes.body,
       color: c.textSecondary,
       textAlign: "center",
@@ -184,27 +189,26 @@ const makeStyles = (c: ThemePalette) =>
     },
     button: {
       backgroundColor: c.primary,
-      borderRadius: Radii.md,
-      paddingVertical: 14,
+      borderRadius: Radii.xl,
       paddingHorizontal: 28,
-      minHeight: 48,
+      minHeight: Cabinet.actionHeight,
       justifyContent: "center",
       marginTop: 20,
     },
     buttonText: {
       color: c.onPrimary,
+      fontFamily: Fonts.headingSemi,
       fontSize: FontSizes.body,
-      fontWeight: FontWeights.heading,
     },
     textButton: { marginTop: 8, padding: 10, minHeight: 44 },
     textButtonText: {
       color: c.primary,
-      fontWeight: FontWeights.heading,
+      fontFamily: Fonts.headingSemi,
       fontSize: FontSizes.body,
     },
     textButtonMuted: {
       color: c.textSecondary,
-      fontWeight: FontWeights.heading,
+      fontFamily: Fonts.headingSemi,
       fontSize: FontSizes.body,
     },
     overlay: { flex: 1, justifyContent: "space-between" },
@@ -224,10 +228,11 @@ const makeStyles = (c: ThemePalette) =>
       alignItems: "center",
     },
     topButtonText: { color: "#FFFFFF", fontSize: 18, fontWeight: "600" },
-    topTitle: { color: "#FFFFFF", fontWeight: "600", fontSize: FontSizes.body },
+    topTitle: { color: "#FFFFFF", fontFamily: Fonts.headingSemi, fontSize: FontSizes.body },
     hintWrap: { alignItems: "center" },
     hint: {
       color: "#FFFFFF",
+      fontFamily: Fonts.body,
       backgroundColor: "rgba(0,0,0,0.55)",
       paddingHorizontal: 14,
       paddingVertical: 8,
@@ -249,7 +254,7 @@ const makeStyles = (c: ThemePalette) =>
       minHeight: 44,
       justifyContent: "center",
     },
-    sideText: { color: "#FFFFFF", fontWeight: "600", fontSize: FontSizes.label },
+    sideText: { color: "#FFFFFF", fontFamily: Fonts.bodyMedium, fontSize: FontSizes.label },
     shutter: {
       width: 78,
       height: 78,

@@ -11,11 +11,13 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
 import { signUp } from "@/lib/auth";
 import { PRIVACY_VERSION } from "@/constants/privacy";
 import { useColors, type ThemePalette } from "@/constants/useColors";
-import { FontSizes, FontWeights, Radii } from "@/constants/theme";
+import { Icon } from "@/components/Icon";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -65,163 +67,197 @@ export default function SignupScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.inner}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Text style={styles.title}>Create account</Text>
-        <Text style={styles.subtitle}>You&apos;ll manage your family&apos;s records</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor={c.textSecondary}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-          value={email}
-          onChangeText={setEmail}
-          editable={!busy}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password (min 8 chars)"
-          placeholderTextColor={c.textSecondary}
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          editable={!busy}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm password"
-          placeholderTextColor={c.textSecondary}
-          secureTextEntry
-          value={confirm}
-          onChangeText={setConfirm}
-          editable={!busy}
-        />
-
-        <Pressable
-          style={styles.consentRow}
-          onPress={() => setConsent((v) => !v)}
-          disabled={busy}
+        <ScrollView
+          contentContainerStyle={styles.inner}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={[styles.checkbox, consent && styles.checkboxOn]}>
-            {consent ? <Text style={styles.checkmark}>✓</Text> : null}
-          </View>
-          <Text style={styles.consentText}>
-            I understand my family&apos;s health records are stored on this phone
-            and backed up to the cloud, and I accept the{" "}
-            <Text
-              style={styles.consentLink}
-              onPress={() => router.push("/(main)/settings/privacy")}
-            >
-              privacy policy
-            </Text>{" "}
-            (v{PRIVACY_VERSION}).
+          <Text style={styles.title} accessibilityRole="header">
+            Create account
           </Text>
-        </Pressable>
+          <Text style={styles.subtitle}>
+            You&apos;ll manage your family&apos;s records
+          </Text>
 
-        <Pressable
-          style={[styles.button, busy && styles.buttonDisabled]}
-          onPress={onSubmit}
-          disabled={busy}
-        >
-          {busy ? (
-            <ActivityIndicator color={c.onPrimary} />
-          ) : (
-            <Text style={styles.buttonText}>Sign up</Text>
-          )}
-        </Pressable>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={c.textSecondary}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+            value={email}
+            onChangeText={setEmail}
+            editable={!busy}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password (min 8 chars)"
+            placeholderTextColor={c.textSecondary}
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            editable={!busy}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm password"
+            placeholderTextColor={c.textSecondary}
+            secureTextEntry
+            value={confirm}
+            onChangeText={setConfirm}
+            editable={!busy}
+          />
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Have an account? </Text>
-          <Link href="/(auth)/login" style={styles.link}>
-            Log in
-          </Link>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <Pressable
+            style={styles.consentRow}
+            onPress={() => setConsent((v) => !v)}
+            disabled={busy}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: consent }}
+            accessibilityLabel="Accept privacy policy"
+          >
+            <View style={[styles.checkbox, consent && styles.checkboxOn]}>
+              {consent ? (
+                <Icon name="check-bold" size={16} color={c.onPrimary} />
+              ) : null}
+            </View>
+            <Text style={styles.consentText}>
+              I understand my family&apos;s health records are stored on this phone
+              and backed up to the cloud, and I accept the{" "}
+              <Text
+                style={styles.consentLink}
+                onPress={() => router.push("/(main)/settings/privacy")}
+              >
+                privacy policy
+              </Text>{" "}
+              (v{PRIVACY_VERSION}).
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.pressed,
+              busy && styles.buttonDisabled,
+            ]}
+            onPress={onSubmit}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Sign up"
+          >
+            {busy ? (
+              <ActivityIndicator color={c.onPrimary} />
+            ) : (
+              <Text style={styles.buttonText}>Sign up</Text>
+            )}
+          </Pressable>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Have an account? </Text>
+            <Link href="/(auth)/login" style={styles.link}>
+              Log in
+            </Link>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
-const makeStyles = (c: ThemePalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  inner: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, paddingVertical: 32, gap: 12 },
-  title: {
-    fontSize: FontSizes.display,
-    fontWeight: FontWeights.display,
-    textAlign: "center",
-    color: c.text,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: FontSizes.body,
-    color: c.textSecondary,
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: c.border,
-    borderRadius: Radii.md,
-    paddingHorizontal: 14,
-    minHeight: 50,
-    fontSize: FontSizes.body,
-    color: c.text,
-  },
-  button: {
-    backgroundColor: c.primary,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    minHeight: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 4,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: {
-    color: c.onPrimary,
-    fontSize: FontSizes.body,
-    fontWeight: FontWeights.heading,
-  },
-  consentRow: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "flex-start",
-    marginTop: 4,
-    minHeight: 44,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: Radii.sm - 2,
-    borderWidth: 2,
-    borderColor: c.border,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 2,
-  },
-  checkboxOn: { backgroundColor: c.primary, borderColor: c.primary },
-  checkmark: {
-    color: c.onPrimary,
-    fontSize: 15,
-    fontWeight: "700",
-    lineHeight: 18,
-  },
-  consentText: {
-    flex: 1,
-    fontSize: FontSizes.caption + 1,
-    color: c.textSecondary,
-    lineHeight: 19,
-  },
-  consentLink: { color: c.primary, fontWeight: "600" },
-  footer: { flexDirection: "row", justifyContent: "center", marginTop: 8 },
-  footerText: { color: c.textSecondary, fontSize: FontSizes.label },
-  link: { color: c.primary, fontWeight: FontWeights.heading, fontSize: FontSizes.label },
-});
+const makeStyles = (c: ThemePalette) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    flex: { flex: 1 },
+    inner: {
+      flexGrow: 1,
+      justifyContent: "center",
+      paddingHorizontal: 24,
+      paddingVertical: 32,
+      gap: 12,
+    },
+    title: {
+      fontFamily: Fonts.headingBold,
+      fontSize: FontSizes.display,
+      textAlign: "center",
+      color: c.text,
+      letterSpacing: -0.4,
+    },
+    subtitle: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: Radii.lg,
+      backgroundColor: c.input,
+      paddingHorizontal: 16,
+      minHeight: 52,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.text,
+    },
+    button: {
+      backgroundColor: c.primary,
+      borderRadius: Radii.xl,
+      minHeight: Cabinet.actionHeight,
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 4,
+    },
+    pressed: { opacity: 0.85 },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+    },
+    consentRow: {
+      flexDirection: "row",
+      gap: 10,
+      alignItems: "flex-start",
+      marginTop: 4,
+      minHeight: Cabinet.touchTarget,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: Radii.sm - 2,
+      borderWidth: 2,
+      borderColor: c.border,
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 2,
+    },
+    checkboxOn: { backgroundColor: c.primary, borderColor: c.primary },
+    consentText: {
+      flex: 1,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+      color: c.textSecondary,
+      lineHeight: 21,
+    },
+    consentLink: {
+      color: c.primary,
+      fontFamily: Fonts.bodyMedium,
+    },
+    footer: { flexDirection: "row", justifyContent: "center", marginTop: 8 },
+    footerText: {
+      color: c.textSecondary,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+    },
+    link: {
+      color: c.primary,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.label,
+    },
+  });

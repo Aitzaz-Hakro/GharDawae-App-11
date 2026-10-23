@@ -15,6 +15,24 @@ _Last updated: 2026-10-10_
 
 ---
 
+## Category: UI Assets
+
+### DiceBear Open Peeps + bundled SVG avatars · 2026-10-22
+- **What:** Open Peeps is a set of illustrated people by Pablo Stanley, available
+  through DiceBear under CC0. SVG stores drawing shapes rather than pixels, so
+  the same file stays sharp in a small picker and a large member header.
+- **Why here:** replaces initials with recognisable pictures while keeping each
+  person's Warm Cabinet colour. Eight SVG files ship inside the app; displaying
+  them never calls DiceBear or sends family names over the network.
+- **How:** the existing `expo-image` package renders static `require()` assets.
+  No new library or SVG transformer is needed. Replace a file in
+  `assets/avatars/` to change its picture without changing the stored preset id.
+- **Learn:** `assets/avatars/README.md` has download settings and replacement
+  steps; https://www.dicebear.com/styles/open-peeps/ describes the artwork.
+- **Status:** 🟡 (new asset workflow; uses the existing image component)
+
+---
+
 ## Category: Framework & Language
 
 ### React Native

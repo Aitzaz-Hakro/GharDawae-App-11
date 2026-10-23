@@ -1,273 +1,239 @@
 # Ghar Dawae — Design System
 
-_Last updated: 2026-10-18_
+_Last updated: 2026-10-22_
 
-**Direction: The Ledger.**
-A caretaker under pressure does not browse — they recall. The app is the
-household's medicine ledger: ruled lines, one date you trust, one medicine
-line you can scan in a glance. Warmth comes from copy and colour, not from
-decoration; speed and legibility are the brand.
+**Direction: Warm Cabinet.**
+The app is a wooden medicine cabinet in a warm kitchen: cream paper, deep green
+for the one thing you press, and a fixed colour for every person in the family.
+The colour is carried by the people, not by decoration. Nothing glows, nothing
+floats, nothing looks like a hospital.
 
-This doc locks the visual + interaction direction. `src/constants/theme.ts` is
-the executable copy; when the two disagree, this doc is the source of truth and
-the code is the defect.
+`src/constants/theme.ts` is the executable copy of this document. When the two
+disagree, this document is the source of truth and the code is the defect.
 
 ---
 
 ## 1. Thesis
 
-> Ghar Dawae is the family's medicine ledger — ruled lines, one date you trust,
-> one medicine line you can scan in a glance — so a caretaker at a pharmacy
-> counter feels *"it's already here"* before the app finishes opening.
+> Ghar Dawae is the family's cabinet — one colour per person, one date you
+> trust, one medicine line you can read at the pharmacy counter — so a
+> caretaker feels *"our house is in my pocket"* before the app finishes
+> opening.
 
 A stranger should recognise, in five seconds, that this is **one family's**
-records and that **a medicine is one line away**.
+records, and which person a record belongs to before reading a word.
 
-## 2. Why this structure (candidate record)
+## 2. Why this direction
 
-Four materially different structures were derived from the content, not from a
-template shelf. All four kept teal + coral and system fonts, so the comparison
-was structural.
+Four structures were derived from the content first (roster strip + ruled lines;
+portrait wall; search-first; polish-only). That exercise produced **The Ledger**:
+a ruled, date-anchored document with a single medicine line. It was correct
+about hierarchy and wrong about warmth — the ruled lines read like a printout,
+and the family had no visual identity beyond their initials.
 
-| # | Direction | Structure | Verdict |
-|---|-----------|-----------|---------|
-| 1 | **The Ledger** | Roster strip + ruled, date-anchored medicine lines; one shared line object across every surface | **Chosen** |
-| 2 | The Wall of Faces | Portrait-first family wall, photo plates, album pages | Rejected: the photo is a blurry handwritten slip, not a portrait; hero emoji-scale tokens read as a toy; heaviest on the low-end target |
-| 3 | The Counter | Search field as home, roster demoted, recent medicines promoted | Rejected: fastest for lookup but destroys family identity and the add flow's anchor |
-| 4 | Polish current only | Fix contrast, migrate defaults, no signature device | Rejected: leaves three unrelated grammars for the same datum |
+**Warm Cabinet** is the exploration that fixed exactly that, generated against
+the Sleek mobile design tool and reviewed screen by screen
+(`docs/design-explorations/warm-cabinet/`). It keeps The Ledger's hierarchy —
+the visit date is still the largest thing on a record, the medicine is still one
+line — and adds:
 
-**Excluded category default:** clinical blue SaaS dashboard (oladoc / Marham
-pattern). Deliberately excluded — looking different is positioning. The content
-does not earn it: there is no hospital workflow here, only a household.
+- a cream paper base instead of white,
+- a solid colour per person, carried from the family grid into their record
+  blocks,
+- a 6px coloured edge on every record, so a family's history stays recognisable
+  when scanned in a list,
+- a warm brown-black night mode instead of a blue-grey one.
 
-The Ledger won because the mechanism is **recall under pressure**, not
-browsing. A ledger is also the object this audience already trusts (the
-prescription slip itself, the vaccination card, the school diary).
+### Exit criteria for the review
+
+1. Structure, spacing, colour and type come from the reviewed screens exactly.
+   That output is the spec, not a mood board.
+2. Content is placeholder. Every string on those screens was replaced with real
+   data from SQLite. No mockup literal ships.
+3. No generated prescription photographs. Only real captures.
+4. The medicine line stays one grammar across every surface (§6).
+5. Tokens only. Every text pair re-measured (§4). Dark mode designed here —
+   the exploration was light-only.
+6. Explicit `flexDirection` on every row; safe-area insets respected; every
+   string inside `<Text>`.
 
 ## 3. Design principles
 
-Three words, in priority order: **Calm. Trustworthy. Fast.**
+In priority order: **Calm. Trustworthy. Fast.**
 
-- **Calm** — one clear action per screen, generous whitespace, no competing
-  signals. The feel is an organised medicine cabinet, not a hospital portal.
-- **Trustworthy** — this holds a family's medical records. Solid, honest,
-  stable. Warmth of a family keepsake over the cold of a clinical EMR.
-- **Fast** — Journey 2 (3-tap offline lookup) is sacred. Nothing visual may
-  slow app open, screen transition, or the family grid.
+| Principle | What it means in code |
+|---|---|
+| Calm | One action colour (`primary`). No gradient, no shadow, no glow. `accent` is a green *surface*, never a button. |
+| Trustworthy | The date is the largest element on a record. Missing facts print an em dash — never a blank that could be read as "none". |
+| Fast | Offline-first: every screen reads SQLite directly. Fonts load behind a gate that falls back to system type rather than blocking. |
 
-Guard: if a choice competes with any of the three, the choice loses.
+## 4. Colour
 
-### Still rejected (carried forward, now with reasons recorded)
-- **3D anywhere** — low-end Android is an explicit target; motion for its own
-  sake is the enemy of fast.
-- **Decorative animation** — an animation must explain a state change or it is
-  cut.
-- **Onboarding carousel** — the empty family grid is the onboarding.
-- **Bundled font files** — system fonts keep cold start free. Warmth is
-  delivered by copy ("Ammi, Baba, the kids"), not by a display face.
+### Light — cream paper, deep green
 
-## 4. The signature device: the medicine line
+| Token | Hex | Use | Measured |
+|---|---|---|---|
+| `background` | `#F7F1E6` | screen base | — |
+| `surface` | `#FFFBF3` | cards, record blocks | — |
+| `surfaceSelected` | `#EFE8D9` | chips, medicine wells | — |
+| `input` | `#FFFDF8` | text fields | — |
+| `border` | `#DCD2BE` | card and field borders | 1.33:1 vs background (decorative) |
+| `primary` | `#2F6B4F` | the one action colour | 6.29:1 with white · 5.60:1 vs background |
+| `primaryPressed` | `#255840` | pressed action | — |
+| `accent` | `#DCEBE0` | calm green *surface* | — |
+| `text` | `#1E2A32` | primary ink | 13.04:1 vs background · 14.20:1 vs surface |
+| `textSecondary` | `#5A6370` | labels, meta | 5.41:1 vs background · 5.89:1 vs surface · 4.98:1 vs chip |
+| `onPrimary` | `#FFFFFF` | ink on the action colour | 6.29:1 |
+| `onAccent` | `#1F4D38` | ink on the accent surface | 7.81:1 |
+| `danger` | `#B3261E` | destructive only | 6.33:1 vs surface |
+| `warningSurface` / `warningText` | `#F7E7C6` / `#6B4A0C` | pending-backup banner | 6.59:1 |
+| `infoSurface` / `infoText` | `#DDEBE8` / `#1F4D48` | syncing banner | 7.74:1 |
 
-One line, one order, every surface:
+### Dark — warm night, not blue-grey
 
-```
-Panadol 500        1 tab     8h      3d
-└ name            └dose   └freq   └duration
-```
-
-- The name grows; the three detail columns are `tabular-nums`, right-aligned,
-  and show an em-dash when empty. Position is the meaning — a caretaker reads
-  by column after the first row.
-- The same component (`MedicineLine`) renders on the member screen, in search
-  results, and inside a record. New surfaces must reuse it; a second grammar
-  for a medicine is a defect.
-- A record is a **dated block**: the date and doctor sit above a hairline rule,
-  with the slip's thumbnail on that rule's right edge
-  (`LedgerRecord`). Blocks stack like entries in a ledger, not like cards.
-
-**One signature interaction:** pressing anywhere in a dated block or on a
-medicine line opens that record. No nested controls inside a ledger row (a
-nested target breaks the promise that the rhythm of the rows is the tap map).
-
-### Derived metrics (`Ledger` in theme.ts)
-| Token | Value | Use |
-|-------|-------|-----|
-| `rule` | `StyleSheet.hairlineWidth` | every rule under a date, every row divider |
-| `medicineRowMinHeight` | 44 | tap target floor for a medicine line |
-| `columnGap` | 12 | gap between name and the detail trio |
-
-## 5. Colour
-
-Roles first; values second.
-
-- **Primary — teal.** Medical trust without hospital sterility; green reads
-  positive in South Asia. Used for actions, links, active states.
-- **Accent — coral.** Reserved for **create** actions only (the add FAB), plus
-  the cross in the app mark. Corals behind white text fail contrast, so the
-  accent's ink is `onAccent` (near-black).
-- **Danger — red, precious.** Delete / destructive only. Never decorative. In a
-  medical app red must always mean danger.
-- **Status surfaces** are their own tokens (`warningSurface`, `infoSurface`)
-  with paired text tokens, so a banner never invents a colour.
-- **Neutrals** — text, surfaces, borders.
-
-### Values (verified, not proposed)
-
-Light:
-
-| Token | Hex | Contrast on its use | Use |
-|-------|-----|---------------------|-----|
-| primary | `#0C7C70` | 5.08:1 with white | buttons, links, active |
-| primaryPressed | `#0A665C` | — | pressed |
-| accent | `#F2764E` | 6.62:1 with `onAccent` | create FAB |
-| accentPressed | `#DD5F38` | — | FAB border / pressed |
-| onAccent | `#111417` | 6.62:1 on accent | ink on coral |
-| background | `#FFFFFF` | — | screen base |
-| surface | `#F6F7F8` | — | cards, inputs, marks |
-| surfaceSelected | `#E6E8EB` | — | chips, selected |
-| border | `#E2E5E9` | — | rules, dividers |
-| text | `#111417` | 18.1:1 on white | primary text |
-| textSecondary | `#5B6168` | 6.5:1 on white | labels, meta |
-| danger | `#C23B3B` | 5.25:1 with white | destructive |
-| success | `#2E9E6B` | fill only | icons/marks |
-| successText | `#1F7A50` | 5.0:1 on white | success text |
-| warningSurface / warningText | `#FFF4E0` / `#7A4F0A` | 7.0:1 | pending-backup banner |
-| infoSurface / infoText | `#EAF3FE` / `#1E4C82` | 8.2:1 | syncing banner |
-
-Dark:
-
-| Token | Hex |
-|-------|-----|
-| primary | `#2DD4BF` |
-| primaryPressed | `#14B8A6` |
-| accent | `#FF8A5E` |
-| onAccent | `#1A0F08` |
-| background | `#0C0E10` |
-| surface | `#17191C` |
-| surfaceSelected | `#23262A` |
-| border | `#2A2E33` |
-| text | `#F2F4F6` |
-| textSecondary | `#A4ABB3` |
-| onPrimary | `#06201C` |
-| danger | `#F26A6A` |
-| success / successText | `#4ED197` |
-| warningSurface / warningText | `#2A2115` / `#F3C98B` |
-| infoSurface / infoText | `#14202E` / `#A9CBF2` |
-
-Every text/background pair above clears WCAG AA (4.5:1 body, 3:1 large). The
-earlier proposal shipped `#0E8A7D` (4.26:1 with white) and a white coral glyph
-(2.81:1); both were replaced rather than accepted, because the doc had said
-"verify when applying" and nobody had.
-
-## 6. Typography
-
-System font stack only (`Fonts` in theme.ts) — fast, native, free, nothing to
-bundle or load on open.
-
-| Step | Size / weight | Use |
-|------|---------------|-----|
-| display | 28 / 700 | screen titles, auth brand |
-| title | 22 / 700 | member name |
-| heading | 18 / 600 | section and record names |
-| body | 16 / 400 | body, inputs, medicine name |
-| label | 14 / 500 | meta, detail columns, buttons |
-| caption | 12 / 400 | eyebrow, timestamps, uppercase labels |
+| Token | Hex | Measured |
+|---|---|---|
+| `background` | `#14120E` | — |
+| `surface` | `#1F1B15` | — |
+| `surfaceSelected` | `#2A251C` | — |
+| `input` | `#191510` | — |
+| `border` | `#3A3327` | 1.50:1 vs background (decorative) |
+| `primary` | `#5FAE85` | 7.02:1 vs background · 6.43:1 vs surface |
+| `accent` | `#22352A` | — |
+| `text` | `#F5EFE3` | 16.34:1 vs background · 14.96:1 vs surface |
+| `textSecondary` | `#B4AB9A` | 8.22:1 vs background · 7.53:1 vs surface · 6.69:1 vs chip |
+| `onPrimary` | `#0E1F16` | 6.43:1 on primary |
+| `onAccent` | `#A9D8BC` | 8.22:1 on accent |
+| `danger` | `#F28B82` | 7.17:1 vs surface |
+| `warningSurface` / `warningText` | `#33280F` / `#F0C97A` | 9.19:1 |
+| `infoSurface` / `infoText` | `#1B2A33` / `#A7CBE0` | 8.60:1 |
 
 Rules:
-- Body never below 16sp. OS font scaling is respected (no fixed heights on
-  text containers that would clip at 200%).
-- Uppercase eyebrows get `letterSpacing: 0.6–0.8`; display sizes get negative
-  tracking (−0.2 to −0.8) so headings do not read as spaced-out body text.
-- Detail columns use `fontVariant: ["tabular-nums"]` so dates and doses line
-  up down the ledger.
 
-## 7. Avatars — monograms, not emoji
+- Body text is never below 16sp. Meta is 14sp; 12sp is reserved for a caption
+  that is never load-bearing.
+- A colour is chosen by token, never by hex, inside a screen.
+- Anything below 4.5:1 is decoration and must not carry meaning.
 
-A member's avatar is an initial in a tinted stamp (`Avatar` component), or
-their photo when one exists.
+## 5. Type
 
-- Why: the default Android font renders 👴/👵 as a white or yellow cartoon
-  face, which read wrong for this audience and looked like a toy; an emoji also
-  cannot take `textSecondary`, dark-mode ink, or a selected ring.
-- Eight tints (`AVATAR_TINTS`): teal, clay, sand, sage, sky, lilac, rose,
-  slate — each with a light and dark ink pair.
-- `avatar_value` stores the tint id. Legacy emoji ids map onto the matching
-  tint, so existing rows keep a sensible identity without a migration.
-- Initials come from the name at render time (`Ammi` → `A`, `Zara Khan` → `ZK`).
+Two families, six files, one family per weight:
 
-## 8. Marks and iconography
+| Role | Family | Size |
+|---|---|---|
+| Display — screen title | `NunitoSans_800` | 28 |
+| Title — section header | `NunitoSans_700` | 22 |
+| Heading — card title, button label | `NunitoSans_600` | 18 |
+| Body | `SourceSans3_400` | 16 |
+| Body medium — emphasis inside body | `SourceSans3_600` | 16 |
+| Label | `SourceSans3_400` | 14 |
+| Caption | `SourceSans3_400` | 12 |
+| Record date | `NunitoSans_800` | 30, tabular |
 
-Marks are drawn from views, not emoji or exotic glyphs:
-- `Magnifier` — two shapes; the 🔍 emoji is a blue cartoon and `⌕` is missing
-  from several Android system fonts (tofu box on a low-end phone).
-- `CameraMark` — three shapes; same reasoning.
-- The app icon, adaptive layers, monochrome layer, favicon and splash mark are
-  generated by `scripts/generate-assets.mjs` — a house (`ghar`) with a
-  rounded cross (`dawae`), teal ground, coral cross. The mark is geometric, so
-  it is reproducible and carries no risk of fake lettering.
+Android synthesises bold badly: asking a 700 file for `fontWeight: 700`
+thickens it twice. Every style therefore names a **loaded family** and never a
+weight. Fonts are loaded with `useFonts`; a font failure falls back to system
+type rather than blocking the offline path.
 
-## 9. Layout and spacing
+Dates use `fontVariant: ["tabular-nums"]` so a column of visits aligns.
 
-- Reuse the existing `Spacing` ramp (`2/4/8/16/24/32/64`); no new magic
-  numbers. Screen gutter is 20; grid gutter is 12.
-- Family grid: 3 columns at phone widths. Avatars are 68 at the grid, 64 in
-  the member header, 48 in a picker, 40 in a search row.
-- Content floor: every screen scrolls with `paddingBottom` of
-  `BottomTabInset + 72` so the FAB never covers the last row.
-- Minimum tap target 44; primary buttons 48–50.
-- `MaxContentWidth` (800) stays for future tablet work; phones are the target.
+## 6. The medicine grammar
 
-## 10. Motion
+A medicine is always the same four facts in the same order:
 
-Short, functional, ≤200ms. `Motion.press` 120, `Motion.insert` 180,
-`Motion.fade` 160. No decorative loops, no 3D, no Lottie. Screen transitions
-come free from the native stack.
+**name · dosage · frequency · duration**
 
-## 11. Media plan
+Density changes with the surface; the facts and their order never do.
 
-No generative imagery in the product. Every visual is either UI or a
-deliberate graphic mark:
+| Surface | Form | Component |
+|---|---|---|
+| Record block (member screen) | chip: `Amlodipine 5mg` | `MedicineChip` |
+| Record detail | card: name + duration, then two labelled wells (Dosage, Frequency) | `MedicineCard` |
+| Search hit | name, then `5mg · twice daily · 7 days` | inline row |
+| Entry form | one row of three inputs under the name | `RecordForm` |
 
-| Asset | Role | Route | Tier |
-|-------|------|-------|------|
-| App icon + adaptive layers | identity | vector, generated by node script | graphic direction (chosen as style) |
-| Splash mark | first frame | same mark, coral-on-teal | graphic direction |
-| Monogram stamp | member identity | code | UI |
-| Prescription photo | the signature media moment | **the user's own capture**, shown full width | real media, no substitution |
+A caretaker learns the object once and reads it everywhere.
 
-The one image the app is remembered by is a real handwritten slip. It is never
-faked, illustrated or replaced with a placeholder graphic — a stand-in would be
-a defect, not a style.
+## 7. Cabinet metrics
 
-## 12. Screen-level intent
+| Token | Value | Use |
+|---|---|---|
+| `gutter` | 20 | outer screen padding |
+| `cardRadius` | 20 | family cards, photos |
+| `blockRadius` | 18 | record blocks, medicine cards, inputs |
+| `edgeWidth` | 6 | person colour on a record block |
+| `gap` | 12 | between cards and grid columns |
+| `rule` | hairline | inner dividers |
+| `touchTarget` | 44 | minimum tappable |
+| `actionHeight` | 56 | primary button |
+| `bottomInset` | 96 | clearance under a floating action |
 
-- **Home** — family name as eyebrow, "Family" as the title, search, roster.
-  The roster is the hero; the FAB in coral is the only accent on the screen.
-- **Member** — identity row (stamp, name, relation/age/gender), count line,
-  then dated ledger blocks. Empty state teaches the add flow.
-- **Record** — the photo at full width first, then fields, then medicines as
-  large medicine lines. Delete is the only red on the screen.
-- **Add record** — camera-first; date defaults to today; recent doctors and
-  medicine autocomplete from the family's own history.
-- **Search** — the medicine hit IS a medicine line; member and record hits
-  reuse the stamp and the `Rx` mark.
-- **Settings / privacy** — tokenised surfaces, status in plain language.
-  "Offline" is never styled as an error.
+Every row sets `flexDirection` explicitly. Screens use
+`SafeAreaView`/`useSafeAreaInsets`; bottom padding is `bottomInset + inset`.
 
-## 13. Non-negotiables
+## 8. Avatars
 
-1. App open goes straight to the family grid when logged in. No visual gate
-   blocks the offline path.
-2. No 3D, no heavy animation libraries, no decorative motion.
-3. Red means danger, always.
-4. Body text ≥16sp, AA contrast everywhere. Contrast claims are verified
-   before they are written down.
-5. One medicine grammar across every surface.
-6. Every colour comes from a token; a hardcoded hex in a screen is a defect.
+DiceBear **Open Peeps** illustrated portraits on a solid person colour — not
+emoji or initials. Eight replaceable SVG files ship in `assets/avatars/`; the
+existing `expo-image` component renders them without a runtime request.
+Artwork is by Pablo Stanley under CC0. Download settings and individual links
+live in `assets/avatars/README.md`.
 
-## 14. Open questions
+Portraits use natural skin tones, cream/pale-green/beige clothing, and warm dark
+hair. The canvas is transparent: the app draws the circle and the selected ring.
+No gender, age, relation or name determines which portrait a member receives;
+the user chooses a preset. Eight fills remain identical in both schemes, each
+verified ≥4.5:1 with white fallback ink:
 
-- Final avatar tint set may need one more tint for large families (>8 members;
-  tints then repeat, which is acceptable — the letter disambiguates).
-- Splash may later gain a single short mark animation; optional, not planned.
-- Tablet layout (two-column ledger) deferred; `MaxContentWidth` is in place.
+| id | fill | ratio |
+|---|---|---|
+| clay | `#B65C3F` | 4.57 |
+| sand | `#966F21` | 4.57 |
+| teal | `#38807C` | 4.62 |
+| lilac | `#8A5A9E` | 5.20 |
+| rose | `#C24E75` | 4.53 |
+| sage | `#5A7F55` | 4.56 |
+| sky | `#467BA5` | 4.53 |
+| slate | `#6B7280` | 4.83 |
+
+The tint follows a person from the grid to their record edge. A person's colour
+must not change when the phone switches to dark. Stored emoji ids from before
+this change still resolve through `LEGACY_EMOJI_TO_TINT`.
+
+Replacing `<tint-id>.svg` changes that shared preset's picture, not its stored
+identity or record colour. A decode failure shows a small vector person, never
+letters. Existing photo avatars still render as photos. Check portraits at
+40/48/64/80px in both schemes; vector art is decorative and the member's name
+remains the accessible identity.
+
+## 9. Icons
+
+Phosphor, embedded as SVG paths in `src/components/Icon.tsx` and rendered with
+`react-native-svg`. No runtime fetch: the icons must draw on the first frame,
+offline. Icons are accessibility-hidden — the label lives on the pressable.
+Never render a glyph character (`＋`, `✕`, `⚙︎`, `›`) as UI: it renders as tofu
+on a missing font.
+
+## 10. Surfaces
+
+- **Family grid** — two columns; each card is a 64px avatar, name, and live
+  prescription count. Counts come from one grouped query (`prescriptionCounts`),
+  not N queries.
+- **Record block** — cream card, 6px person edge, "Visit date" label, 30px date,
+  doctor, medicine chips.
+- **Banner** — sync state only, rounded, tinted surface. Offline is never an
+  error.
+- **Empty state** — one sentence of plain copy and the action that fixes it.
+
+## 11. Motion
+
+Press feedback is an opacity change (`0.8`), 0 ms to enter, nothing that delays
+the next screen. The app is used at a pharmacy counter; it must feel like it was
+already open.
+
+## 12. Open items
+
+- Render gate: every screen in light and dark against
+  `docs/design-explorations/warm-cabinet/*-review.png`.
+- `react-native-svg` is a new native module — the installed APK must be rebuilt.
+- Contrast was measured for the pairs above; re-measure after any palette edit.

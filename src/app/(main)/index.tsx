@@ -6,9 +6,10 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
@@ -16,30 +17,32 @@ import { useAuth } from "@/lib/auth-context";
 import {
   resolveFamily,
   listMembers,
-  type Family,
+  prescriptionCounts,
   type Member,
 } from "@/lib/family";
 import { Avatar } from "@/components/Avatar";
-import { Magnifier } from "@/components/Magnifier";
+import { Icon } from "@/components/Icon";
 import { SyncBanner } from "@/components/SyncBanner";
 import { useSyncStatus } from "@/lib/use-sync-status";
-import {
-  BottomTabInset,
-  FontSizes,
-  FontWeights,
-  Ledger,
-  Radii,
-} from "@/constants/theme";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const c = useColors();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  // Two columns with one gap. Set explicitly: with `flex: 1` an odd final card
+  // stretches across the whole row.
+  const cardWidth = (width - Cabinet.gutter * 2 - Cabinet.gap) / 2;
+  const styles = useMemo(
+    () => makeStyles(c, insets.bottom),
+    [c, insets.bottom],
+  );
   const sync = useSyncStatus();
   const managerId = session?.user.id;
-  const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,8 +55,12 @@ export default function HomeScreen() {
     setError(null);
     try {
       const fam = await resolveFamily(managerId);
-      setFamily(fam);
-      setMembers(await listMembers(fam.id));
+      const [list, countMap] = await Promise.all([
+        listMembers(fam.id),
+        prescriptionCounts(fam.id),
+      ]);
+      setMembers(list);
+      setCounts(countMap);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -79,55 +86,65 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>{family?.name ?? "My Family"}</Text>
-          <Text style={styles.title} accessibilityRole="header">
-            Family
-          </Text>
+        <View style={styles.brand}>
+          <View style={styles.brandMark}>
+            <Icon name="house-line-fill" size={24} color={c.onPrimary} />
+          </View>
+          <View style={styles.headerText}>
+            <Text style={styles.eyebrow}>Ghar Dawae</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              Our Family
+            </Text>
+          </View>
         </View>
         <Pressable
           onPress={() => router.push("/(main)/settings")}
           hitSlop={8}
-          style={styles.settingsBtn}
+          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel="Settings"
         >
-          <Text style={styles.settingsText}>⚙︎</Text>
+          <Icon name="gear" size={24} color={c.text} />
         </Pressable>
       </View>
 
-      <Pressable
-        style={styles.searchBar}
-        onPress={() => router.push("/(main)/search")}
-        accessibilityRole="search"
-        accessibilityLabel="Search medicines, doctors or family members"
-      >
-        <Magnifier size={17} color={c.textSecondary} />
-        <Text style={styles.searchPlaceholder}>
-          Medicine, doctor or family member
-        </Text>
-      </Pressable>
+      <View style={styles.searchWrap}>
+        <Pressable
+          style={({ pressed }) => [styles.searchBar, pressed && styles.pressed]}
+          onPress={() => router.push("/(main)/search")}
+          accessibilityRole="search"
+          accessibilityLabel="Search people, records or medicines"
+        >
+          <Icon name="magnifying-glass" size={24} color={c.textSecondary} />
+          <Text style={styles.searchPlaceholder}>
+            Search people, records, medicines
+          </Text>
+        </Pressable>
+      </View>
 
       <SyncBanner status={sync} />
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <FlatList
         data={members}
         keyExtractor={(m) => m.id}
-        numColumns={3}
+        numColumns={2}
         contentContainerStyle={styles.grid}
         columnWrapperStyle={styles.row}
         refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={load}
-            tintColor={c.primary}
-          />
+          <RefreshControl refreshing={false} onRefresh={load} tintColor={c.primary} />
         }
         ListHeaderComponent={
           members.length > 0 ? (
-            <Text style={styles.sectionLabel}>Who needs a medicine</Text>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle} accessibilityRole="header">
+                Family members
+              </Text>
+              <Text style={styles.sectionCount}>
+                {members.length} {members.length === 1 ? "person" : "people"}
+              </Text>
+            </View>
           ) : null
         }
         ListEmptyComponent={
@@ -138,172 +155,227 @@ export default function HomeScreen() {
               their prescriptions as you go.
             </Text>
             <Pressable
-              style={styles.emptyButton}
+              style={({ pressed }) => [styles.emptyButton, pressed && styles.pressed]}
               onPress={() => router.push("/(main)/member/new")}
             >
               <Text style={styles.emptyButtonText}>Add your first member</Text>
             </Pressable>
           </View>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.memberCard}
-            onPress={() => router.push(`/(main)/member/${item.id}`)}
-            accessibilityRole="button"
-            accessibilityLabel={
-              item.relation ? `${item.name}, ${item.relation}` : item.name
-            }
-          >
-            <Avatar
-              name={item.name}
-              type={item.avatar_type}
-              value={item.avatar_value}
-              size={68}
-            />
-            <Text style={styles.memberName} numberOfLines={1}>
-              {item.name}
-            </Text>
-            {item.relation ? (
-              <Text style={styles.memberRelation} numberOfLines={1}>
-                {item.relation}
-              </Text>
-            ) : null}
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const count = counts[item.id] ?? 0;
+          return (
+            <Pressable
+              style={({ pressed }) => [
+                styles.memberCard,
+                { width: cardWidth },
+                pressed && styles.pressed,
+              ]}
+              onPress={() => router.push(`/(main)/member/${item.id}`)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                item.relation ? `${item.name}, ${item.relation}` : item.name
+              }
+            >
+              <Avatar
+                name={item.name}
+                type={item.avatar_type}
+                value={item.avatar_value}
+                size={64}
+              />
+              <View style={styles.memberText}>
+                <Text style={styles.memberName} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={styles.memberCount}>
+                  {count} {count === 1 ? "prescription" : "prescriptions"}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        }}
       />
 
-      <Pressable
-        style={styles.fab}
-        onPress={() => router.push("/(main)/member/new")}
-        accessibilityRole="button"
-        accessibilityLabel="Add a family member"
-      >
-        <Text style={styles.fabText}>＋</Text>
-      </Pressable>
+      <View style={styles.fabWrap} pointerEvents="box-none">
+        <Pressable
+          style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+          onPress={() => router.push("/(main)/member/new")}
+          accessibilityRole="button"
+          accessibilityLabel="Add a family member"
+        >
+          <Icon name="plus-bold" size={24} color={c.onPrimary} />
+          <Text style={styles.fabText}>Add member</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
 
-const makeStyles = (c: ThemePalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: c.background,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
-  headerText: { flex: 1 },
-  eyebrow: {
-    fontSize: FontSizes.caption,
-    color: c.textSecondary,
-    fontWeight: FontWeights.label,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-  title: {
-    fontSize: FontSizes.display,
-    fontWeight: FontWeights.display,
-    color: c.text,
-    letterSpacing: -0.4,
-  },
-  settingsBtn: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  settingsText: { fontSize: 24, color: c.text },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginHorizontal: 20,
-    marginBottom: 4,
-    borderRadius: Radii.md,
-    backgroundColor: c.surface,
-    paddingHorizontal: 14,
-    minHeight: 48,
-  },
-  searchPlaceholder: { color: c.textSecondary, fontSize: FontSizes.body },
-  error: { color: c.danger, paddingHorizontal: 20, paddingBottom: 8 },
-  grid: { paddingHorizontal: 12, paddingBottom: BottomTabInset + 72 },
-  row: { justifyContent: "flex-start" },
-  sectionLabel: {
-    paddingHorizontal: 8,
-    paddingTop: 20,
-    paddingBottom: 4,
-    fontSize: FontSizes.caption,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: c.textSecondary,
-  },
-  empty: {
-    textAlign: "center",
-    color: c.textSecondary,
-    marginTop: 8,
-    fontSize: FontSizes.body,
-    lineHeight: 24,
-  },
-  emptyWrap: { alignItems: "center", marginTop: 48, paddingHorizontal: 24 },
-  emptyTitle: {
-    fontSize: FontSizes.heading,
-    fontWeight: FontWeights.heading,
-    marginBottom: 4,
-    color: c.text,
-  },
-  emptyButton: {
-    marginTop: 20,
-    backgroundColor: c.primary,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    minHeight: 48,
-    justifyContent: "center",
-  },
-  emptyButtonText: {
-    color: c.onPrimary,
-    fontWeight: FontWeights.heading,
-    fontSize: FontSizes.body,
-  },
-  memberCard: {
-    width: "33.33%",
-    alignItems: "center",
-    paddingVertical: 14,
-  },
-  memberName: {
-    marginTop: 10,
-    fontWeight: FontWeights.heading,
-    fontSize: FontSizes.body,
-    maxWidth: "90%",
-    color: c.text,
-  },
-  memberRelation: {
-    fontSize: FontSizes.caption,
-    color: c.textSecondary,
-    maxWidth: "90%",
-    marginTop: 2,
-  },
-  fab: {
-    position: "absolute",
-    right: 24,
-    bottom: BottomTabInset + 24,
-    width: 60,
-    height: 60,
-    borderRadius: Radii.pill,
-    backgroundColor: c.accent,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: Ledger.rule,
-    borderColor: c.accentPressed,
-  },
-  fabText: { color: c.onAccent, fontSize: 30, lineHeight: 34 },
-});
+const makeStyles = (c: ThemePalette, bottomInset: number) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: c.background,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: Cabinet.gutter,
+      paddingTop: 20,
+      paddingBottom: 16,
+    },
+    brand: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+    brandMark: {
+      width: 44,
+      height: 44,
+      borderRadius: Radii.lg - 2,
+      backgroundColor: c.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerText: { flex: 1 },
+    eyebrow: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+    },
+    title: {
+      fontFamily: Fonts.headingBold,
+      fontSize: FontSizes.display,
+      color: c.text,
+      letterSpacing: -0.4,
+    },
+    iconButton: {
+      width: 44,
+      height: 44,
+      borderRadius: Radii.lg - 2,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pressed: { opacity: 0.8 },
+    searchWrap: { paddingHorizontal: Cabinet.gutter, paddingBottom: 20 },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      minHeight: 56,
+      paddingHorizontal: 16,
+      borderRadius: Radii.xl,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.input,
+    },
+    searchPlaceholder: {
+      flex: 1,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+    },
+    error: {
+      color: c.danger,
+      paddingHorizontal: Cabinet.gutter,
+      paddingBottom: 8,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+    },
+    grid: {
+      paddingHorizontal: Cabinet.gutter,
+      paddingBottom: Cabinet.bottomInset + bottomInset,
+    },
+    row: { gap: Cabinet.gap },
+    sectionHead: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      justifyContent: "space-between",
+      gap: 12,
+      paddingHorizontal: 0,
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      fontFamily: Fonts.heading,
+      fontSize: FontSizes.title,
+      color: c.text,
+    },
+    sectionCount: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+    },
+    emptyWrap: { alignItems: "center", marginTop: 48, paddingHorizontal: 12 },
+    emptyTitle: {
+      fontFamily: Fonts.heading,
+      fontSize: FontSizes.title,
+      color: c.text,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    empty: {
+      textAlign: "center",
+      color: c.textSecondary,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      lineHeight: 24,
+    },
+    emptyButton: {
+      marginTop: 20,
+      backgroundColor: c.primary,
+      borderRadius: Radii.xl,
+      paddingHorizontal: 24,
+      minHeight: 50,
+      justifyContent: "center",
+    },
+    emptyButtonText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+    },
+    memberCard: {
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      padding: 16,
+      gap: 12,
+      marginBottom: Cabinet.gap,
+    },
+    memberText: { gap: 2 },
+    memberName: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+      color: c.text,
+    },
+    memberCount: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+    },
+    fabWrap: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: bottomInset + 24,
+      paddingHorizontal: Cabinet.gutter,
+      alignItems: "flex-end",
+    },
+    fab: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      minHeight: 64,
+      paddingHorizontal: 24,
+      borderRadius: Radii.xl,
+      backgroundColor: c.primary,
+    },
+    fabText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+    },
+  });

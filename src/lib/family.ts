@@ -185,6 +185,26 @@ export async function countPrescriptions(memberId: string): Promise<number> {
   return row?.n ?? 0;
 }
 
+/**
+ * Prescription count per member for one family, in one query. The family grid
+ * shows a count on every card, so asking per member would be N round-trips on
+ * the screen that must open fastest.
+ */
+export async function prescriptionCounts(
+  familyId: string,
+): Promise<Record<string, number>> {
+  const db = await getDatabase();
+  const rows = await db.getAll<{ member_id: string; n: number }>(
+    `SELECT p.member_id AS member_id, COUNT(*) AS n
+       FROM prescriptions p
+       JOIN members m ON m.id = p.member_id
+      WHERE m.family_id = ?
+      GROUP BY p.member_id`,
+    [familyId],
+  );
+  return Object.fromEntries(rows.map((r) => [r.member_id, r.n]));
+}
+
 /** Delete a member and everything under them. Returns local photo file names
  *  so the caller can clean up the files those records owned. */
 export async function deleteMemberDeep(memberId: string): Promise<string[]> {

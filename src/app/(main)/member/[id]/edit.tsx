@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
@@ -24,25 +24,27 @@ import {
 import { getDatabase } from "@/lib/powersync/db";
 import { deletePhoto } from "@/lib/photo";
 import {
-  AVATAR_TINTS,
+  AVATAR_PRESETS,
   RELATIONS,
   avatarTintForStoredValue,
 } from "@/constants/avatars";
 import { Avatar } from "@/components/Avatar";
-import { FontSizes, FontWeights, Radii } from "@/constants/theme";
+import { Icon } from "@/components/Icon";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function EditMemberScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useColors();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(c, insets.bottom), [c, insets.bottom]);
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const [name, setName] = useState("");
   const [relation, setRelation] = useState<string | null>(null);
-  const [avatarId, setAvatarId] = useState(AVATAR_TINTS[0].id);
+  const [avatarId, setAvatarId] = useState(AVATAR_PRESETS[0].id);
   const [age, setAge] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "other" | null>(null);
 
@@ -64,7 +66,7 @@ export default function EditMemberScreen() {
           setAvatarId(
             row.avatar_type === "preset"
               ? avatarTintForStoredValue(row.avatar_value).id
-              : AVATAR_TINTS[0].id,
+              : AVATAR_PRESETS[0].id,
           );
           setAge(row.age != null ? String(row.age) : "");
           setGender(row.gender);
@@ -133,25 +135,32 @@ export default function EditMemberScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={c.primary} />
       </View>
     );
   }
 
   if (!member) {
     return (
-      <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <View style={styles.container}>
         <Stack.Screen options={{ headerShown: true, title: "Edit member" }} />
         <View style={styles.center}>
           <Text style={styles.error}>That member no longer exists.</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <Stack.Screen options={{ headerShown: true, title: "Edit member" }} />
+    <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "Edit member",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: c.background },
+        }}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
@@ -160,16 +169,17 @@ export default function EditMemberScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.label}>Colour</Text>
+          <Text style={styles.label}>Avatar</Text>
           <View style={styles.avatarRow}>
-            {AVATAR_TINTS.map((a) => (
+            {AVATAR_PRESETS.map((a) => (
               <Pressable
                 key={a.id}
                 style={styles.avatarChip}
                 onPress={() => setAvatarId(a.id)}
+                disabled={busy}
                 accessibilityRole="button"
-                accessibilityLabel={`Avatar colour ${a.id}`}
-                accessibilityState={{ selected: avatarId === a.id }}
+                accessibilityLabel={`${a.label} avatar`}
+                accessibilityState={{ selected: avatarId === a.id, disabled: busy }}
               >
                 <Avatar
                   name={name || member?.name}
@@ -197,6 +207,8 @@ export default function EditMemberScreen() {
                 key={r}
                 style={[styles.chip, relation === r && styles.chipActive]}
                 onPress={() => setRelation(r)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: relation === r }}
               >
                 <Text style={[styles.chipText, relation === r && styles.chipTextActive]}>
                   {r}
@@ -221,6 +233,8 @@ export default function EditMemberScreen() {
                 key={g}
                 style={[styles.chip, gender === g && styles.chipActive]}
                 onPress={() => setGender(g)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: gender === g }}
               >
                 <Text style={[styles.chipText, gender === g && styles.chipTextActive]}>
                   {g}
@@ -230,9 +244,15 @@ export default function EditMemberScreen() {
           </View>
 
           <Pressable
-            style={[styles.button, busy && styles.buttonDisabled]}
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.pressed,
+              busy && styles.buttonDisabled,
+            ]}
             onPress={onSave}
             disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Save changes"
           >
             {busy ? (
               <ActivityIndicator color={c.onPrimary} />
@@ -241,89 +261,112 @@ export default function EditMemberScreen() {
             )}
           </Pressable>
 
-          <Pressable style={styles.deleteButton} onPress={onDelete} disabled={busy}>
+          <Pressable
+            style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
+            onPress={onDelete}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${member.name}`}
+          >
+            <Icon name="trash" size={20} color={c.danger} />
             <Text style={styles.deleteText}>Delete member</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const makeStyles = (c: ThemePalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  flex: { flex: 1 },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-    backgroundColor: c.background,
-  },
-  error: { color: c.danger },
-  content: { padding: 20, gap: 8, paddingBottom: 48 },
-  label: {
-    fontSize: FontSizes.label,
-    fontWeight: FontWeights.heading,
-    marginTop: 14,
-    color: c.text,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: c.border,
-    borderRadius: Radii.md,
-    paddingHorizontal: 14,
-    minHeight: 48,
-    fontSize: FontSizes.body,
-    color: c.text,
-  },
-  avatarRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  avatarChip: {
-    width: 52,
-    height: 52,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    paddingHorizontal: 14,
-    minHeight: 44,
-    justifyContent: "center",
-    borderRadius: Radii.pill,
-    backgroundColor: c.surface,
-  },
-  chipActive: { backgroundColor: c.primary },
-  chipText: {
-    color: c.text,
-    fontSize: FontSizes.label,
-    textTransform: "capitalize",
-  },
-  chipTextActive: { color: c.onPrimary, fontWeight: "600" },
-  button: {
-    backgroundColor: c.primary,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    minHeight: 48,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 24,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: {
-    color: c.onPrimary,
-    fontSize: FontSizes.body,
-    fontWeight: FontWeights.heading,
-  },
-  deleteButton: {
-    marginTop: 20,
-    paddingVertical: 14,
-    minHeight: 48,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  deleteText: {
-    color: c.danger,
-    fontWeight: FontWeights.heading,
-    fontSize: FontSizes.body,
-  },
-});
+const makeStyles = (c: ThemePalette, bottomInset: number) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    flex: { flex: 1 },
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+      backgroundColor: c.background,
+    },
+    error: {
+      color: c.danger,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+    },
+    content: {
+      paddingHorizontal: Cabinet.gutter,
+      paddingBottom: bottomInset + 48,
+    },
+    label: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.label,
+      color: c.text,
+      marginTop: 18,
+      marginBottom: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: Radii.lg,
+      backgroundColor: c.input,
+      paddingHorizontal: 16,
+      minHeight: 52,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.text,
+    },
+    avatarRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    avatarChip: {
+      width: 56,
+      height: 56,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    chip: {
+      paddingHorizontal: 16,
+      minHeight: Cabinet.touchTarget,
+      justifyContent: "center",
+      borderRadius: Radii.pill,
+      backgroundColor: c.surfaceSelected,
+    },
+    chipActive: { backgroundColor: c.primary },
+    chipText: {
+      fontFamily: Fonts.bodyMedium,
+      color: c.text,
+      fontSize: FontSizes.label,
+      textTransform: "capitalize",
+    },
+    chipTextActive: { color: c.onPrimary },
+    button: {
+      backgroundColor: c.primary,
+      borderRadius: Radii.xl,
+      minHeight: Cabinet.actionHeight,
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 28,
+    },
+    pressed: { opacity: 0.8 },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+    },
+    deleteButton: {
+      marginTop: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      minHeight: Cabinet.actionHeight,
+      borderRadius: Radii.xl,
+      borderWidth: 1,
+      borderColor: c.danger,
+    },
+    deleteText: {
+      color: c.danger,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.body,
+    },
+  });

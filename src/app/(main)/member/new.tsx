@@ -9,24 +9,25 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
 import { addMember, resolveFamily } from "@/lib/family";
 import { useAuth } from "@/lib/auth-context";
-import { AVATAR_TINTS, RELATIONS } from "@/constants/avatars";
+import { AVATAR_PRESETS, RELATIONS } from "@/constants/avatars";
 import { Avatar } from "@/components/Avatar";
-import { FontSizes, FontWeights, Radii } from "@/constants/theme";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function NewMemberScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const c = useColors();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(c, insets.bottom), [c, insets.bottom]);
   const [name, setName] = useState("");
   const [relation, setRelation] = useState<string | null>(null);
-  const [avatarId, setAvatarId] = useState(AVATAR_TINTS[0].id);
+  const [avatarId, setAvatarId] = useState(AVATAR_PRESETS[0].id);
   const [age, setAge] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "other" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,26 +62,37 @@ export default function NewMemberScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <Stack.Screen options={{ headerShown: true, title: "Add member" }} />
-      <ScrollView contentContainerStyle={styles.content}>
+    <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "Add member",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: c.background },
+        }}
+      />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.preview}>
-          <Avatar name={name || relation || "Aa"} value={avatarId} size={76} />
+          <Avatar name={name || relation || "Aa"} value={avatarId} size={80} />
           <Text style={styles.previewHint}>
-            Your member&apos;s first letter, in the colour you pick below.
+            Pick a picture to recognise this member across your family&apos;s records.
           </Text>
         </View>
 
-        <Text style={styles.label}>Colour</Text>
+        <Text style={styles.label}>Avatar</Text>
         <View style={styles.avatarRow}>
-          {AVATAR_TINTS.map((a) => (
+          {AVATAR_PRESETS.map((a) => (
             <Pressable
               key={a.id}
               style={styles.avatarChip}
               onPress={() => setAvatarId(a.id)}
+              disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel={`Avatar colour ${a.id}`}
-              accessibilityState={{ selected: avatarId === a.id }}
+              accessibilityLabel={`${a.label} avatar`}
+              accessibilityState={{ selected: avatarId === a.id, disabled: busy }}
             >
               <Avatar
                 name={name || relation || "Aa"}
@@ -110,6 +122,8 @@ export default function NewMemberScreen() {
               key={r}
               style={[styles.chip, relation === r && styles.chipActive]}
               onPress={() => setRelation(r)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: relation === r }}
             >
               <Text
                 style={[
@@ -141,6 +155,8 @@ export default function NewMemberScreen() {
               key={g}
               style={[styles.chip, gender === g && styles.chipActive]}
               onPress={() => setGender(g)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: gender === g }}
             >
               <Text
                 style={[styles.chipText, gender === g && styles.chipTextActive]}
@@ -152,9 +168,15 @@ export default function NewMemberScreen() {
         </View>
 
         <Pressable
-          style={[styles.button, busy && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.button,
+            pressed && styles.pressed,
+            busy && styles.buttonDisabled,
+          ]}
           onPress={onSave}
           disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Save member"
         >
           {busy ? (
             <ActivityIndicator color={c.onPrimary} />
@@ -163,69 +185,78 @@ export default function NewMemberScreen() {
           )}
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const makeStyles = (c: ThemePalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  content: { padding: 20, gap: 8, paddingBottom: 40 },
-  preview: { alignItems: "center", paddingVertical: 12, gap: 10 },
-  previewHint: {
-    fontSize: FontSizes.caption,
-    color: c.textSecondary,
-    textAlign: "center",
-  },
-  label: {
-    fontSize: FontSizes.label,
-    fontWeight: FontWeights.heading,
-    marginTop: 12,
-    color: c.text,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: c.border,
-    borderRadius: Radii.md,
-    paddingHorizontal: 14,
-    minHeight: 48,
-    fontSize: FontSizes.body,
-    color: c.text,
-  },
-  avatarRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  avatarChip: {
-    width: 52,
-    height: 52,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    paddingHorizontal: 14,
-    minHeight: 44,
-    justifyContent: "center",
-    borderRadius: Radii.pill,
-    backgroundColor: c.surface,
-  },
-  chipActive: { backgroundColor: c.primary },
-  chipText: {
-    color: c.text,
-    fontSize: FontSizes.label,
-    textTransform: "capitalize",
-  },
-  chipTextActive: { color: c.onPrimary, fontWeight: "600" },
-  button: {
-    backgroundColor: c.primary,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    minHeight: 48,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 24,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: {
-    color: c.onPrimary,
-    fontSize: FontSizes.body,
-    fontWeight: FontWeights.heading,
-  },
-});
+const makeStyles = (c: ThemePalette, bottomInset: number) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    content: {
+      paddingHorizontal: Cabinet.gutter,
+      paddingBottom: bottomInset + 40,
+    },
+    preview: { alignItems: "center", paddingVertical: 16, gap: 10 },
+    previewHint: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+      color: c.textSecondary,
+      textAlign: "center",
+    },
+    label: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.label,
+      color: c.text,
+      marginTop: 18,
+      marginBottom: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: Radii.lg,
+      backgroundColor: c.input,
+      paddingHorizontal: 16,
+      minHeight: 52,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.text,
+    },
+    avatarRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    avatarChip: {
+      width: 56,
+      height: 56,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    chip: {
+      paddingHorizontal: 16,
+      minHeight: Cabinet.touchTarget,
+      justifyContent: "center",
+      borderRadius: Radii.pill,
+      backgroundColor: c.surfaceSelected,
+    },
+    chipActive: { backgroundColor: c.primary },
+    chipText: {
+      fontFamily: Fonts.bodyMedium,
+      color: c.text,
+      fontSize: FontSizes.label,
+      textTransform: "capitalize",
+    },
+    chipTextActive: { color: c.onPrimary },
+    button: {
+      backgroundColor: c.primary,
+      borderRadius: Radii.xl,
+      minHeight: Cabinet.actionHeight,
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 28,
+    },
+    pressed: { opacity: 0.8 },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+    },
+  });

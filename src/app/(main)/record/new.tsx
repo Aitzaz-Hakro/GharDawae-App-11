@@ -6,7 +6,7 @@ import { useColors, type ThemePalette } from "@/constants/useColors";
 import { RecordForm } from "@/components/RecordForm";
 import { getDatabase } from "@/lib/powersync/db";
 import type { Member } from "@/lib/family";
-import { FontSizes } from "@/constants/theme";
+import { FontSizes, Fonts } from "@/constants/theme";
 
 /**
  * Add a record without going through the camera first — the fallback path when
@@ -88,5 +88,10 @@ const makeStyles = (c: ThemePalette) => StyleSheet.create({
     padding: 24,
     backgroundColor: c.background,
   },
-  error: { color: c.danger, textAlign: "center", fontSize: FontSizes.body },
+  error: {
+    color: c.danger,
+    textAlign: "center",
+    fontFamily: Fonts.body,
+    fontSize: FontSizes.body,
+  },
 });

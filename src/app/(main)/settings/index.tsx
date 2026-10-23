@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
@@ -16,13 +16,15 @@ import { signOut } from "@/lib/auth";
 import { useAuth } from "@/lib/auth-context";
 import { deleteAccountData } from "@/lib/account";
 import { useSyncStatus } from "@/lib/use-sync-status";
-import { FontSizes, FontWeights, Ledger, Radii } from "@/constants/theme";
+import { Icon, type IconName } from "@/components/Icon";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const c = useColors();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(c, insets.bottom), [c, insets.bottom]);
   const sync = useSyncStatus();
   const [busy, setBusy] = useState(false);
 
@@ -80,8 +82,15 @@ export default function SettingsScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <Stack.Screen options={{ headerShown: true, title: "Settings" }} />
+    <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "Settings",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: c.background },
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.sectionLabel}>Account</Text>
         <View style={styles.card}>
@@ -102,17 +111,20 @@ export default function SettingsScreen() {
             <Text style={styles.rowError}>{sync.message}</Text>
           ) : null}
         </View>
-        <Pressable
-          style={styles.linkRow}
-          onPress={() => router.push("/(main)/settings/privacy")}
-        >
-          <Text style={styles.linkText}>Privacy & how your data is stored</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
 
-        <Pressable style={styles.linkRow} onPress={() => signOut()}>
-          <Text style={styles.linkText}>Log out</Text>
-        </Pressable>
+        <View style={styles.group}>
+          <LinkRow
+            icon="shield-check"
+            label="Privacy & how your data is stored"
+            onPress={() => router.push("/(main)/settings/privacy")}
+          />
+          <View style={styles.rule} />
+          <LinkRow
+            icon="sign-out"
+            label="Log out"
+            onPress={() => signOut()}
+          />
+        </View>
 
         <Text style={styles.sectionLabel}>Danger zone</Text>
         <Text style={styles.warningBody}>
@@ -120,80 +132,143 @@ export default function SettingsScreen() {
           is no undo and no backup kept.
         </Text>
         <Pressable
-          style={[styles.dangerButton, busy && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.dangerButton,
+            pressed && styles.pressed,
+            busy && styles.buttonDisabled,
+          ]}
           onPress={onDeleteAccount}
           disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Delete all my data"
         >
           {busy ? (
-            <ActivityIndicator color={c.onPrimary} />
+            <ActivityIndicator color={c.danger} />
           ) : (
-            <Text style={styles.dangerText}>Delete my data</Text>
+            <>
+              <Icon name="trash" size={20} color={c.danger} />
+              <Text style={styles.dangerText}>Delete my data</Text>
+            </>
           )}
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const makeStyles = (c: ThemePalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  content: { padding: 20, paddingBottom: 48 },
-  sectionLabel: {
-    fontSize: FontSizes.caption,
-    fontWeight: "700",
-    color: c.textSecondary,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginTop: 26,
-    marginBottom: 8,
-  },
-  card: {
-    borderRadius: Radii.md,
-    backgroundColor: c.surface,
-    padding: 16,
-    gap: 4,
-  },
-  rowLabel: { fontSize: FontSizes.label, color: c.textSecondary },
-  rowValue: {
-    fontSize: FontSizes.body,
-    fontWeight: FontWeights.heading,
-    color: c.text,
-  },
-  rowMeta: { fontSize: FontSizes.caption, color: c.textSecondary, marginTop: 4 },
-  rowError: { fontSize: FontSizes.caption, color: c.danger, marginTop: 4 },
-  linkRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 16,
-    minHeight: 52,
-    borderBottomWidth: Ledger.rule,
-    borderBottomColor: c.border,
-  },
-  linkText: {
-    fontSize: FontSizes.body,
-    color: c.primary,
-    fontWeight: FontWeights.heading,
-  },
-  chevron: { fontSize: 22, color: c.textSecondary },
-  warningBody: {
-    fontSize: FontSizes.label,
-    color: c.textSecondary,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  dangerButton: {
-    backgroundColor: c.danger,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    minHeight: 48,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  buttonDisabled: { opacity: 0.6 },
-  dangerText: {
-    color: "#FFFFFF",
-    fontSize: FontSizes.body,
-    fontWeight: FontWeights.heading,
-  },
-});
+function LinkRow({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  const styles = useMemo(() => makeStyles(c, 0), [c]);
+
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Icon name={icon} size={22} color={c.primary} />
+      <Text style={styles.linkText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const makeStyles = (c: ThemePalette, bottomInset: number) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    content: {
+      paddingHorizontal: Cabinet.gutter,
+      paddingBottom: bottomInset + 48,
+    },
+    sectionLabel: {
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.label,
+      color: c.textSecondary,
+      marginTop: 26,
+      marginBottom: 8,
+    },
+    card: {
+      borderRadius: Cabinet.blockRadius,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      padding: 16,
+      gap: 4,
+    },
+    rowLabel: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+      color: c.textSecondary,
+    },
+    rowValue: {
+      fontFamily: Fonts.bodyMedium,
+      fontSize: FontSizes.body,
+      color: c.text,
+    },
+    rowMeta: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+      color: c.textSecondary,
+      marginTop: 4,
+    },
+    rowError: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+      color: c.danger,
+      marginTop: 4,
+    },
+    group: {
+      marginTop: 16,
+      borderRadius: Cabinet.blockRadius,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      paddingHorizontal: 16,
+    },
+    rule: { height: Cabinet.rule, backgroundColor: c.border },
+    linkRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingVertical: 16,
+      minHeight: 56,
+    },
+    linkText: {
+      fontFamily: Fonts.bodyMedium,
+      fontSize: FontSizes.body,
+      color: c.primary,
+      flex: 1,
+    },
+    pressed: { opacity: 0.8 },
+    warningBody: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.label,
+      color: c.textSecondary,
+      lineHeight: 21,
+      marginBottom: 16,
+    },
+    dangerButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      borderRadius: Radii.xl,
+      borderWidth: 1,
+      borderColor: c.danger,
+      minHeight: Cabinet.actionHeight,
+    },
+    buttonDisabled: { opacity: 0.6 },
+    dangerText: {
+      color: c.danger,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.body,
+    },
+  });

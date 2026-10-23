@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
-import { FontSizes, FontWeights, Ledger } from "@/constants/theme";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 import type { SyncStatusInfo } from "@/lib/use-sync-status";
 
 /**
@@ -58,15 +58,16 @@ export function SyncBanner({ status }: { status: SyncStatusInfo }) {
 const makeStyles = (c: ThemePalette) =>
   StyleSheet.create({
     bar: {
-      paddingHorizontal: 20,
-      paddingVertical: 8,
-      borderBottomWidth: Ledger.rule,
-      borderBottomColor: c.border,
+      marginHorizontal: Cabinet.gutter,
+      marginBottom: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: Radii.md,
     },
     syncing: { backgroundColor: c.infoSurface },
     pending: { backgroundColor: c.warningSurface },
-    error: { backgroundColor: c.surface },
-    text: { fontSize: FontSizes.caption, fontWeight: FontWeights.label },
+    error: { backgroundColor: c.surfaceSelected },
+    text: { fontFamily: Fonts.bodyMedium, fontSize: FontSizes.label },
     syncingText: { color: c.infoText },
     pendingText: { color: c.warningText },
     errorText: { color: c.danger },

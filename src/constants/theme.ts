@@ -2,101 +2,92 @@
  * Ghar Dawae theme tokens — single source of truth for color, type, spacing.
  * See docs/design-system.md for the rationale behind every value.
  *
- * Direction: calm teal (medical trust) + warm coral accent (family), red reserved
- * for danger only. System fonts (fast, no bundle cost). WCAG AA on all text pairs.
+ * Direction: Warm Cabinet. A cream paper base, a deep green for actions, warm
+ * ink for text, and a fixed family palette of eight person colours. The warmth
+ * is carried by surface and type, never by decoration.
+ *
+ * Every text pair below was measured, not assumed. Ratios are inline so a
+ * future change has to argue with a number.
  */
 
-import '@/global.css';
-
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 export const Colors = {
   light: {
-    // brand
-    primary: '#0C7C70', // 5.08:1 on white — teal behind white text passes AA
-    primaryPressed: '#0A665C',
-    accent: '#F2764E', // fills only; never behind white text (2.81:1)
-    accentPressed: '#DD5F38',
+    // brand — deep green, the one action colour
+    primary: '#2F6B4F', // 6.29:1 with white
+    primaryPressed: '#255840',
+    // accent is a calm green SURFACE (count banner), not the action colour
+    accent: '#DCEBE0',
+    accentPressed: '#CFE3D5',
     // surfaces
-    background: '#FFFFFF',
-    surface: '#F6F7F8',
-    surfaceSelected: '#E6E8EB',
-    border: '#E2E5E9',
+    background: '#F7F1E6', // warm paper
+    surface: '#FFFBF3', // cards
+    surfaceSelected: '#EFE8D9', // chips, muted wells
+    input: '#FFFDF8',
+    border: '#DCD2BE',
     // text
-    text: '#111417',
-    textSecondary: '#5B6168',
+    text: '#1E2A32', // 13.04:1 on background
+    textSecondary: '#5A6370', // 5.41:1 on background, 5.89:1 on card
     onPrimary: '#FFFFFF',
-    onAccent: '#111417', // 6.62:1 on coral
+    onAccent: '#1F4D38', // 7.81:1 on accent
     // semantic
-    danger: '#C23B3B', // 5.25:1 on white
-    success: '#2E9E6B', // fill only
-    successText: '#1F7A50', // text-safe green
-    warningSurface: '#FFF4E0',
-    warningText: '#7A4F0A',
-    infoSurface: '#EAF3FE',
-    infoText: '#1E4C82',
+    danger: '#B3261E', // 6.33:1 on card
+    success: '#2E7D5B',
+    successText: '#1F5C43',
+    warningSurface: '#F7E7C6',
+    warningText: '#6B4A0C',
+    infoSurface: '#DDEBE8',
+    infoText: '#1F4D48',
     // legacy aliases (kept so unmigrated screens still resolve)
-    backgroundElement: '#F6F7F8',
-    backgroundSelected: '#E6E8EB',
+    backgroundElement: '#FFFBF3',
+    backgroundSelected: '#EFE8D9',
   },
   dark: {
-    // brand
-    primary: '#2DD4BF',
-    primaryPressed: '#14B8A6',
-    accent: '#FF8A5E',
-    accentPressed: '#F2764E',
-    // surfaces
-    background: '#0C0E10',
-    surface: '#17191C',
-    surfaceSelected: '#23262A',
-    border: '#2A2E33',
-    // text
-    text: '#F2F4F6',
-    textSecondary: '#A4ABB3',
-    onPrimary: '#06201C',
-    onAccent: '#1A0F08', // dark ink on bright coral
-    // semantic
-    danger: '#F26A6A',
-    success: '#4ED197',
-    successText: '#4ED197',
-    warningSurface: '#2A2115',
-    warningText: '#F3C98B',
-    infoSurface: '#14202E',
-    infoText: '#A9CBF2',
+    // warm night: brown-black paper, not a blue-grey dark mode
+    primary: '#5FAE85',
+    primaryPressed: '#4E9E76',
+    accent: '#22352A',
+    accentPressed: '#2A4133',
+    background: '#14120E',
+    surface: '#1F1B15',
+    surfaceSelected: '#2A251C',
+    input: '#191510',
+    border: '#3A3327',
+    text: '#F5EFE3', // 16.34:1 on background
+    textSecondary: '#B4AB9A', // 8.22:1 on background
+    onPrimary: '#0E1F16', // 6.43:1 on primary
+    onAccent: '#A9D8BC', // 8.22:1 on accent
+    danger: '#F28B82', // 7.17:1 on card
+    success: '#7BD3A4',
+    successText: '#7BD3A4',
+    warningSurface: '#33280F',
+    warningText: '#F0C97A',
+    infoSurface: '#1B2A33',
+    infoText: '#A7CBE0',
     // legacy aliases
-    backgroundElement: '#17191C',
-    backgroundSelected: '#23262A',
+    backgroundElement: '#1F1B15',
+    backgroundSelected: '#2A251C',
   },
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+/**
+ * Font families. Each weight is its own loaded family, because React Native
+ * synthesises bold badly on Android: asking a 700 file for fontWeight 700
+ * thickens it a second time. Always pick the family, never the weight.
+ */
+export const Fonts = {
+  body: 'SourceSans3_400',
+  bodyMedium: 'SourceSans3_600',
+  bodyBold: 'SourceSans3_700',
+  heading: 'NunitoSans_700',
+  headingSemi: 'NunitoSans_600',
+  headingBold: 'NunitoSans_800',
+} as const;
 
-/** Type scale (sp). Body never below 16 — elderly/caretaker friendly. */
+/** Type scale (sp). Body never below 16 — caretaker-friendly. */
 export const FontSizes = {
   display: 28,
   title: 22,
@@ -104,27 +95,12 @@ export const FontSizes = {
   body: 16,
   label: 14,
   caption: 12,
+  /** Visit dates: the largest element on a record. */
+  recordDate: 30,
+  /** The count on the prescriptions banner. */
+  stat: 32,
 } as const;
 
-export const FontWeights = {
-  display: '700',
-  title: '700',
-  heading: '600',
-  body: '400',
-  label: '500',
-} as const;
-
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
-} as const;
-
-/** Motion durations (ms) — short; app must feel instant, not animated. */
 export const Motion = {
   press: 120,
   insert: 180,
@@ -135,24 +111,32 @@ export const Radii = {
   sm: 8,
   md: 12,
   lg: 16,
+  xl: 20,
   pill: 999,
 } as const;
 
 /**
- * Ledger metrics — the signature device (docs/design-system.md §4).
- * Every medicine line on every surface shares these numbers, so a row on the
- * family screen, a search hit and a record detail read as the same object.
+ * Cabinet metrics — the Warm Cabinet layout constants.
+ * Cards breathe on a 20px radius, record blocks carry a 6px person-colour
+ * edge, and the screen gutter is 20.
  */
-export const Ledger = {
-  /** Ruled line under each record date. */
+export const Cabinet = {
+  /** Outer screen gutter. */
+  gutter: 20,
+  /** Radius of a card or the photo target. */
+  cardRadius: 20,
+  /** Radius of a record or medicine block. */
+  blockRadius: 18,
+  /** Width of the person-colour edge on a record block. */
+  edgeWidth: 6,
+  /** Gap between cards in a stack or grid. */
+  gap: 12,
+  /** Hairline used for inner rules. */
   rule: StyleSheet.hairlineWidth,
-  /** Minimum tap target for a medicine line. */
-  medicineRowMinHeight: 44,
-  /** Column gap between name and the dose/frequency/duration trio. */
-  columnGap: 12,
-  /** Width of one ledger column at body size — keeps the trio aligned. */
-  unit: 8,
+  /** Minimum tap target. */
+  touchTarget: 44,
+  /** Primary action height. */
+  actionHeight: 56,
+  /** Bottom clearance so the floating action never covers the last card. */
+  bottomInset: 96,
 } as const;
-
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;

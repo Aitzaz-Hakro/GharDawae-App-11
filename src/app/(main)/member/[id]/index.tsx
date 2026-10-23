@@ -3,19 +3,19 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Image } from "expo-image";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
 import { getDatabase } from "@/lib/powersync/db";
 import { Avatar } from "@/components/Avatar";
-import { LedgerRecord } from "@/components/Ledger";
-import { usePhotoSource } from "@/lib/use-photo-source";
+import { RecordBlock } from "@/components/Cabinet";
+import { Icon } from "@/components/Icon";
 import {
   formatVisitDate,
   loadMedicinesFor,
@@ -23,12 +23,8 @@ import {
   type Prescription,
 } from "@/lib/records";
 import type { Member } from "@/lib/family";
-import {
-  BottomTabInset,
-  FontSizes,
-  FontWeights,
-  Radii,
-} from "@/constants/theme";
+import { avatarTintForStoredValue } from "@/constants/avatars";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 type RecordRow = Prescription & { medicines: Medicine[] };
 
@@ -36,39 +32,31 @@ type RecordRow = Prescription & { medicines: Medicine[] };
  * One visit-history row. Split into its own component because resolving the
  * photo may need a network call, and hooks can't live in `renderItem`.
  */
-function RecordCard({ item }: { item: RecordRow }) {
+function RecordCard({ item, accentColor }: { item: RecordRow; accentColor: string }) {
   const router = useRouter();
-  const c = useColors();
-  const styles = useMemo(() => makeStyles(c), [c]);
-  const uri = usePhotoSource(item.photo_path, item.photo_url);
 
   return (
-    <LedgerRecord
-      dateLabel={formatVisitDate(item.visit_date)}
-      doctor={item.doctor_name}
-      medicines={item.medicines}
-      emptyNote={item.diagnosis_note || "No medicines recorded"}
-      onPress={() => router.push(`/(main)/record/${item.id}`)}
-      accessibilityLabel={`Record from ${formatVisitDate(item.visit_date)}${
-        item.doctor_name ? `, ${item.doctor_name}` : ""
-      }, ${item.medicines.length} medicine${item.medicines.length === 1 ? "" : "s"}`}
-      thumb={
-        uri ? (
-          <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
-        ) : (
-          <View style={[styles.thumb, styles.thumbEmpty]}>
-            <Text style={styles.thumbEmptyText}>Rx</Text>
-          </View>
-        )
-      }
-    />
+    <View style={{ marginBottom: Cabinet.gap }}>
+      <RecordBlock
+        dateLabel={formatVisitDate(item.visit_date)}
+        doctor={item.doctor_name}
+        medicines={item.medicines}
+        accentColor={accentColor}
+        emptyNote={item.diagnosis_note || "No medicines recorded"}
+        onPress={() => router.push(`/(main)/record/${item.id}`)}
+        accessibilityLabel={`Record from ${formatVisitDate(item.visit_date)}${
+          item.doctor_name ? `, ${item.doctor_name}` : ""
+        }, ${item.medicines.length} medicine${item.medicines.length === 1 ? "" : "s"}`}
+      />
+    </View>
   );
 }
 
 export default function MemberDetailScreen() {
   const router = useRouter();
   const c = useColors();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(c, insets.bottom), [c, insets.bottom]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [member, setMember] = useState<Member | null>(null);
   const [records, setRecords] = useState<RecordRow[]>([]);
@@ -112,6 +100,11 @@ export default function MemberDetailScreen() {
     }, [load]),
   );
 
+  const tint = useMemo(
+    () => avatarTintForStoredValue(member?.avatar_value),
+    [member?.avatar_value],
+  );
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -121,29 +114,40 @@ export default function MemberDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <View style={styles.container}>
       <Stack.Screen
         options={{
           headerShown: true,
-          title: member?.name ?? "Member",
+          title: "",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: c.background },
           headerRight: () =>
             member ? (
               <Pressable
                 onPress={() => router.push(`/(main)/member/${member.id}/edit`)}
                 hitSlop={8}
-                style={styles.headerAction}
+                style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit ${member.name}`}
               >
-                <Text style={styles.editText}>Edit</Text>
+                <Icon name="pencil-simple" size={22} color={c.primary} />
               </Pressable>
             ) : null,
         }}
       />
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <FlatList
         data={records}
         keyExtractor={(r) => r.id}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={load}
+            tintColor={c.primary}
+          />
+        }
         ListHeaderComponent={
           <View style={styles.head}>
             <View style={styles.identity}>
@@ -151,13 +155,13 @@ export default function MemberDetailScreen() {
                 name={member?.name}
                 type={member?.avatar_type}
                 value={member?.avatar_value}
-                size={64}
+                size={80}
               />
               <View style={styles.identityText}>
-                <Text style={styles.name} accessibilityRole="header">
+                <Text style={styles.name} accessibilityRole="header" numberOfLines={1}>
                   {member?.name}
                 </Text>
-                <Text style={styles.sub}>
+                <Text style={styles.sub} numberOfLines={1}>
                   {[
                     member?.relation,
                     member?.age ? `${member.age} yrs` : null,
@@ -168,11 +172,18 @@ export default function MemberDetailScreen() {
                 </Text>
               </View>
             </View>
-            {records.length > 0 ? (
-              <Text style={styles.countLine}>
-                {records.length} prescription{records.length === 1 ? "" : "s"} on
-                file
+
+            <View style={[styles.countBanner, { borderLeftColor: tint.background }]}>
+              <Text style={styles.countValue}>{records.length}</Text>
+              <Text style={styles.countLabel}>
+                {records.length === 1
+                  ? "prescription on file"
+                  : "prescriptions on file"}
               </Text>
+            </View>
+
+            {records.length > 0 ? (
+              <Text style={styles.sectionTitle}>Visit history</Text>
             ) : null}
           </View>
         }
@@ -184,115 +195,155 @@ export default function MemberDetailScreen() {
               even with no internet.
             </Text>
             <Pressable
-              style={styles.emptyButton}
+              style={({ pressed }) => [styles.emptyButton, pressed && styles.pressed]}
               onPress={() => router.push(`/(main)/record/camera?memberId=${id}`)}
             >
+              <Icon name="camera" size={22} color={c.onPrimary} />
               <Text style={styles.emptyButtonText}>Add a record</Text>
             </Pressable>
           </View>
         }
-        renderItem={({ item }) => <RecordCard item={item} />}
+        renderItem={({ item }) => (
+          <RecordCard item={item} accentColor={tint.background} />
+        )}
       />
 
-      <Pressable
-        style={styles.fab}
-        onPress={() => router.push(`/(main)/record/camera?memberId=${id}`)}
-        accessibilityRole="button"
-        accessibilityLabel={`Add a prescription for ${member?.name ?? "this member"}`}
-      >
-        <Text style={styles.fabText}>＋</Text>
-      </Pressable>
-    </SafeAreaView>
+      <View style={[styles.fabWrap, { bottom: insets.bottom + 24 }]} pointerEvents="box-none">
+        <Pressable
+          style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+          onPress={() => router.push(`/(main)/record/camera?memberId=${id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={`Add a prescription for ${member?.name ?? "this member"}`}
+        >
+          <Icon name="camera-fill" size={24} color={c.onPrimary} />
+          <Text style={styles.fabText}>New record</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
-const makeStyles = (c: ThemePalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: c.background,
-  },
-  error: { color: c.danger, paddingHorizontal: 20, paddingBottom: 8 },
-  list: { paddingHorizontal: 20, paddingBottom: BottomTabInset + 96 },
-  headerAction: {
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  head: { paddingTop: 16 },
-  identity: { flexDirection: "row", alignItems: "center", gap: 16 },
-  identityText: { flex: 1 },
-  name: {
-    fontSize: FontSizes.title,
-    fontWeight: FontWeights.title,
-    color: c.text,
-    letterSpacing: -0.2,
-  },
-  sub: {
-    fontSize: FontSizes.label,
-    color: c.textSecondary,
-    marginTop: 2,
-    textTransform: "capitalize",
-  },
-  editText: { color: c.primary, fontWeight: FontWeights.heading, fontSize: FontSizes.body },
-  countLine: {
-    marginTop: 18,
-    fontSize: FontSizes.caption,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: c.textSecondary,
-  },
-  empty: {
-    textAlign: "center",
-    color: c.textSecondary,
-    marginTop: 8,
-    fontSize: FontSizes.body,
-    lineHeight: 24,
-  },
-  emptyWrap: { alignItems: "center", marginTop: 40, paddingHorizontal: 24 },
-  emptyTitle: {
-    fontSize: FontSizes.heading,
-    fontWeight: FontWeights.heading,
-    color: c.text,
-  },
-  emptyButton: {
-    marginTop: 20,
-    backgroundColor: c.primary,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    minHeight: 48,
-    justifyContent: "center",
-  },
-  emptyButtonText: {
-    color: c.onPrimary,
-    fontWeight: FontWeights.heading,
-    fontSize: FontSizes.body,
-  },
-  thumb: {
-    width: 52,
-    height: 52,
-    borderRadius: Radii.sm,
-    backgroundColor: c.surface,
-  },
-  thumbEmpty: { justifyContent: "center", alignItems: "center" },
-  thumbEmptyText: {
-    color: c.textSecondary,
-    fontWeight: "700",
-    fontSize: FontSizes.label,
-  },
-  fab: {
-    position: "absolute",
-    right: 24,
-    bottom: BottomTabInset + 24,
-    width: 60,
-    height: 60,
-    borderRadius: Radii.pill,
-    backgroundColor: c.accent,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  fabText: { color: c.onAccent, fontSize: 30, lineHeight: 34 },
-});
+const makeStyles = (c: ThemePalette, bottomInset: number) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: c.background,
+    },
+    error: {
+      color: c.danger,
+      paddingHorizontal: Cabinet.gutter,
+      paddingBottom: 8,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+    },
+    list: {
+      paddingHorizontal: Cabinet.gutter,
+      paddingBottom: Cabinet.bottomInset + bottomInset,
+    },
+    headerAction: {
+      width: Cabinet.touchTarget,
+      height: Cabinet.touchTarget,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pressed: { opacity: 0.8 },
+    head: { paddingTop: 4, paddingBottom: 8 },
+    identity: { flexDirection: "row", alignItems: "center", gap: 16 },
+    identityText: { flex: 1 },
+    name: {
+      fontFamily: Fonts.headingBold,
+      fontSize: FontSizes.display,
+      color: c.text,
+      letterSpacing: -0.4,
+    },
+    sub: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+      marginTop: 2,
+      textTransform: "capitalize",
+    },
+    countBanner: {
+      marginTop: 20,
+      borderRadius: Cabinet.blockRadius,
+      borderLeftWidth: Cabinet.edgeWidth,
+      backgroundColor: c.surface,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: 10,
+    },
+    countValue: {
+      fontFamily: Fonts.headingBold,
+      fontSize: FontSizes.stat,
+      color: c.text,
+      fontVariant: ["tabular-nums"],
+    },
+    countLabel: {
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      color: c.textSecondary,
+      flexShrink: 1,
+    },
+    sectionTitle: {
+      fontFamily: Fonts.heading,
+      fontSize: FontSizes.title,
+      color: c.text,
+      marginTop: 24,
+      marginBottom: 12,
+    },
+    emptyWrap: { alignItems: "center", marginTop: 32, paddingHorizontal: 8 },
+    emptyTitle: {
+      fontFamily: Fonts.heading,
+      fontSize: FontSizes.title,
+      color: c.text,
+      marginBottom: 8,
+    },
+    empty: {
+      textAlign: "center",
+      color: c.textSecondary,
+      fontFamily: Fonts.body,
+      fontSize: FontSizes.body,
+      lineHeight: 24,
+    },
+    emptyButton: {
+      marginTop: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: c.primary,
+      borderRadius: Radii.xl,
+      paddingHorizontal: 24,
+      minHeight: Cabinet.actionHeight,
+    },
+    emptyButtonText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+    },
+    fabWrap: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      paddingHorizontal: Cabinet.gutter,
+      alignItems: "flex-end",
+    },
+    fab: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      minHeight: 60,
+      paddingHorizontal: 22,
+      borderRadius: Radii.xl,
+      backgroundColor: c.primary,
+    },
+    fabText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.headingSemi,
+      fontSize: FontSizes.heading,
+    },
+  });

@@ -18,7 +18,7 @@ import { Image } from "expo-image";
 
 import { useColors, type ThemePalette } from "@/constants/useColors";
 import { CameraCapture } from "@/components/CameraCapture";
-import { CameraMark } from "@/components/CameraMark";
+import { Icon } from "@/components/Icon";
 import {
   addPrescription,
   formatDateInput,
@@ -30,7 +30,7 @@ import {
 } from "@/lib/records";
 import { savePhoto } from "@/lib/photo";
 import { uuid } from "@/lib/uuid";
-import { FontSizes, FontWeights, Radii } from "@/constants/theme";
+import { Cabinet, FontSizes, Fonts, Radii } from "@/constants/theme";
 
 type MedicineDraft = {
   /** Local-only key so editing a row doesn't remount the inputs. */
@@ -204,8 +204,10 @@ export function RecordForm({
             <Pressable
               style={styles.photoPlaceholder}
               onPress={() => setCameraOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Photograph the prescription"
             >
-              <CameraMark size={34} color={c.textSecondary} />
+              <Icon name="camera" size={34} color={c.textSecondary} />
               <Text style={styles.photoPlaceholderText}>
                 Photograph the prescription
               </Text>
@@ -309,8 +311,10 @@ export function RecordForm({
                     onPress={() => removeMedicine(m.key)}
                     hitSlop={8}
                     disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove this medicine"
                   >
-                    <Text style={styles.removeText}>✕</Text>
+                    <Icon name="x" size={20} color={c.danger} />
                   </Pressable>
                 )}
               </View>
@@ -362,8 +366,11 @@ export function RecordForm({
             style={styles.addMedicine}
             onPress={() => setMedicines((rows) => [...rows, emptyMedicine()])}
             disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Add another medicine"
           >
-            <Text style={styles.addMedicineText}>＋ Add another medicine</Text>
+            <Icon name="plus-bold" size={18} color={c.primary} />
+            <Text style={styles.addMedicineText}>Add another medicine</Text>
           </Pressable>
 
           <Text style={styles.label}>Notes</Text>
@@ -397,29 +404,32 @@ export function RecordForm({
 const makeStyles = (c: ThemePalette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.background },
   flex: { flex: 1 },
-  content: { padding: 20, gap: 8, paddingBottom: 48 },
+  content: { paddingHorizontal: Cabinet.gutter, paddingBottom: 48 },
   label: {
+    fontFamily: Fonts.headingSemi,
     fontSize: FontSizes.label,
-    fontWeight: FontWeights.heading,
-    marginTop: 16,
     color: c.text,
+    marginTop: 20,
+    marginBottom: 6,
   },
   input: {
     borderWidth: 1,
     borderColor: c.border,
-    borderRadius: Radii.md,
-    paddingHorizontal: 14,
-    minHeight: 48,
+    borderRadius: Radii.lg,
+    backgroundColor: c.input,
+    paddingHorizontal: 16,
+    minHeight: 52,
+    fontFamily: Fonts.body,
     fontSize: FontSizes.body,
     justifyContent: "center",
     color: c.text,
   },
-  dateText: { fontSize: FontSizes.body, color: c.text },
-  multiline: { minHeight: 84, textAlignVertical: "top", paddingTop: 12 },
+  dateText: { fontFamily: Fonts.body, fontSize: FontSizes.body, color: c.text },
+  multiline: { minHeight: 96, textAlignVertical: "top", paddingTop: 14 },
   photo: {
     width: "100%",
     height: 220,
-    borderRadius: Radii.md,
+    borderRadius: Cabinet.cardRadius,
     backgroundColor: c.surface,
   },
   photoActions: {
@@ -429,19 +439,19 @@ const makeStyles = (c: ThemePalette) => StyleSheet.create({
   },
   link: {
     color: c.primary,
-    fontWeight: FontWeights.heading,
+    fontFamily: Fonts.headingSemi,
     paddingVertical: 10,
     fontSize: FontSizes.body,
   },
   linkDanger: {
     color: c.danger,
-    fontWeight: FontWeights.heading,
+    fontFamily: Fonts.headingSemi,
     paddingVertical: 10,
     fontSize: FontSizes.body,
   },
   photoPlaceholder: {
-    height: 150,
-    borderRadius: Radii.md,
+    height: 168,
+    borderRadius: Cabinet.cardRadius,
     borderWidth: 1,
     borderColor: c.border,
     borderStyle: "dashed",
@@ -449,9 +459,11 @@ const makeStyles = (c: ThemePalette) => StyleSheet.create({
     alignItems: "center",
     gap: 10,
     backgroundColor: c.surface,
+    marginTop: 8,
   },
   photoPlaceholderText: {
     color: c.textSecondary,
+    fontFamily: Fonts.body,
     textAlign: "center",
     lineHeight: 24,
     fontSize: FontSizes.body,
@@ -459,14 +471,26 @@ const makeStyles = (c: ThemePalette) => StyleSheet.create({
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
   chipWrapRow: { flexDirection: "row", gap: 8, paddingVertical: 8 },
   chip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     minHeight: 40,
     justifyContent: "center",
     borderRadius: Radii.pill,
     backgroundColor: c.surfaceSelected,
   },
-  chipText: { color: c.primary, fontSize: FontSizes.label, fontWeight: FontWeights.label },
-  medicineCard: { gap: 8, marginBottom: 8 },
+  chipText: {
+    color: c.text,
+    fontFamily: Fonts.bodyMedium,
+    fontSize: FontSizes.label,
+  },
+  medicineCard: {
+    gap: 8,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: Cabinet.blockRadius,
+    borderWidth: 1,
+    borderColor: c.border,
+    backgroundColor: c.surface,
+  },
   medicineHead: { flexDirection: "row", gap: 8, alignItems: "center" },
   medicineRow: { flexDirection: "row", gap: 8 },
   removeBtn: {
@@ -476,25 +500,30 @@ const makeStyles = (c: ThemePalette) => StyleSheet.create({
     justifyContent: "center",
   },
   removeText: { color: c.danger, fontSize: 20, fontWeight: "600" },
-  addMedicine: { paddingVertical: 12, minHeight: 44, justifyContent: "center" },
+  addMedicine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 12,
+    minHeight: 44,
+  },
   addMedicineText: {
     color: c.primary,
-    fontWeight: FontWeights.heading,
+    fontFamily: Fonts.headingSemi,
     fontSize: FontSizes.body,
   },
   button: {
     backgroundColor: c.primary,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    minHeight: 50,
+    borderRadius: Radii.xl,
+    minHeight: Cabinet.actionHeight,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 24,
+    marginTop: 28,
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: {
     color: c.onPrimary,
-    fontSize: FontSizes.body,
-    fontWeight: FontWeights.heading,
+    fontFamily: Fonts.headingSemi,
+    fontSize: FontSizes.heading,
   },
 });
