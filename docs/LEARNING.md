@@ -126,9 +126,21 @@ _Last updated: 2026-09-26_
 ### EAS (Expo Application Services)
 - **What:** Expo's cloud build service — turns your code into an installable APK
   without a local Android Studio setup.
-- **Why here:** build the app, install on your real phone, no emulator.
-- **Learn:** Expo docs → "EAS Build".
-- **Status:** 🔴
+- **Why here:** build the app, install on your real phone, no emulator. Also the
+  only way to run native modules (SQLite/SQLCipher/PowerSync) that Expo Go lacks.
+- **Learn:** Expo docs → "EAS Build" / "Create a development build".
+- **Status:** 🟡 (setting up now)
+
+### Development build (vs Expo Go) · M0·EAS
+- **What:** a real installable app binary (APK) that includes
+  `expo-dev-client` — your app + any native modules, plus a dev menu.
+- **Why here:** Expo Go only has its bundled native modules. M2 adds SQLite,
+  SQLCipher, PowerSync (native) → need a dev build. Also fixes the "failed to
+  download remote update" error (dev build connects to Metro differently).
+- **Key config:** `eas.json` development profile: `developmentClient: true`,
+  `distribution: "internal"`, `android.buildType: "apk"` (dev builds must be APK,
+  not AAB).
+- **Status:** 🟡
 
 ### Git / version control
 - **What:** tracks code history, lets you undo, branch, and back up your work.

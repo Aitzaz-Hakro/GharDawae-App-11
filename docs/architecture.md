@@ -152,6 +152,33 @@ _First entry lands when we start M0/M1._
     `@react-navigation/native` (not installed).
 - **Verify pending (needs phone):** actually run signup → add member → see grid.
 
+### EAS dev build setup · M0 · 2026-10-08
+- **What it does:** cloud-builds an installable Android APK (dev build) so we can
+  test on a real phone AND run native modules Expo Go lacks (needed for M2).
+- **Files touched:**
+  - `eas.json` (new) — development profile: `developmentClient: true`,
+    `distribution: internal`, `android.buildType: apk`; preview (internal apk);
+    production (app-bundle, autoIncrement).
+  - `app.json` — added `android.package: "com.ghardawae.app"`; changed
+    `web.output` static → `single` (fix below).
+  - `expo-dev-client` dependency added.
+- **Key decisions:**
+  - Android dev builds must be **.apk** (per Expo SDK 57 docs) — .aab can't be
+    installed on a device.
+  - `appVersionSource: "remote"` in eas.json cli config.
+- **Gotchas / learned:**
+  - **Web crash fix:** `web.output: "static"` prerenders on Node (no `window`),
+    which crashed Supabase auth + AsyncStorage at startup
+    (`ReferenceError: window is not defined`). Switched to `"single"` (SPA, no
+    SSR). Web now works.
+  - `expo-dev-client` makes Metro connect to the dev build differently — this
+    also resolves the earlier Expo Go "failed to download remote update" error.
+  - Followed AGENTS.md: read SDK-57 versioned EAS docs instead of trusting
+    training data.
+- **ACTION REQUIRED (you):** first EAS build is interactive — Expo account login,
+  keystore generation. Run:
+  `npx eas-cli@latest build --platform android --profile development`
+
 ---
 
 ## 5. Design Approach
