@@ -34,7 +34,20 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Ghar Dawae uses the camera to photograph your prescriptions so you can keep them as records."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ghar Dawae needs access to your photos so you can attach an existing picture of a prescription."
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

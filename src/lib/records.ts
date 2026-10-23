@@ -45,6 +45,11 @@ export type MedicineInput = {
 };
 
 export type NewPrescription = {
+  /**
+   * Optional pre-generated id. Pass one when the caller has already used the id
+   * elsewhere — e.g. naming the saved photo file after its record.
+   */
+  id?: string;
   member_id: string;
   photo_path?: string | null;
   doctor_name?: string | null;
@@ -62,6 +67,32 @@ export function today(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** Parse a stored YYYY-MM-DD into a local Date (not UTC — avoids off-by-one). */
+export function parseDateInput(value: string): Date {
+  const [y, m, d] = value.split("-").map(Number);
+  if (!y || !m || !d) return new Date();
+  return new Date(y, m - 1, d);
+}
+
+/** Format a Date as YYYY-MM-DD. */
+export function formatDateInput(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** Human-readable visit date for display, e.g. "8 Oct 2026". */
+export function formatVisitDate(value: string | null): string {
+  if (!value) return "No date";
+  const [y, m, d] = value.split("-").map(Number);
+  if (!y || !m || !d) return value;
+  return `${d} ${MONTHS[m - 1] ?? ""} ${y}`.trim();
+}
+
 /**
  * Create a prescription and its medicines atomically.
  * Fast-entry rules (docs/06): a record is valid with a photo OR >=1 medicine.
@@ -72,7 +103,7 @@ export async function addPrescription(
   const db = await getDatabase();
   const now = new Date().toISOString();
   const rx: Prescription = {
-    id: uuid(),
+    id: input.id ?? uuid(),
     member_id: input.member_id,
     photo_path: input.photo_path ?? null,
     photo_url: null,
