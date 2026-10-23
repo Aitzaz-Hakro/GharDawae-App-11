@@ -13,9 +13,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import { Image } from "expo-image";
 
+import { CameraCapture } from "@/components/CameraCapture";
 import {
   addPrescription,
   formatDateInput,
@@ -60,8 +61,8 @@ export function RecordForm({
   initialPhotoUri,
   onSaved,
 }: RecordFormProps) {
-  const router = useRouter();
   const [photoUri, setPhotoUri] = useState<string | null>(initialPhotoUri ?? null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [doctorName, setDoctorName] = useState("");
   const [visitDate, setVisitDate] = useState(today());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -186,13 +187,7 @@ export function RecordForm({
             <View>
               <Image source={{ uri: photoUri }} style={styles.photo} contentFit="cover" />
               <View style={styles.photoActions}>
-                <Pressable
-                  onPress={() =>
-                    router.replace(
-                      `/(main)/record/camera?memberId=${memberId}`,
-                    )
-                  }
-                >
+                <Pressable onPress={() => setCameraOpen(true)}>
                   <Text style={styles.link}>Retake</Text>
                 </Pressable>
                 <Pressable onPress={() => setPhotoUri(null)}>
@@ -203,15 +198,23 @@ export function RecordForm({
           ) : (
             <Pressable
               style={styles.photoPlaceholder}
-              onPress={() =>
-                router.replace(`/(main)/record/camera?memberId=${memberId}`)
-              }
+              onPress={() => setCameraOpen(true)}
             >
               <Text style={styles.photoPlaceholderText}>
                 📷{"\n"}Photograph the prescription
               </Text>
             </Pressable>
           )}
+
+          <CameraCapture
+            visible={cameraOpen}
+            title="Take photo"
+            onClose={() => setCameraOpen(false)}
+            onCaptured={(uri) => {
+              setPhotoUri(uri);
+              setCameraOpen(false);
+            }}
+          />
 
           <Text style={styles.label}>Doctor</Text>
           <TextInput
