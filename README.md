@@ -236,7 +236,7 @@ Full walkthroughs: `docs/m2-powersync-setup.md`, `docs/m3-photo-storage-setup.md
 | `npm run android` | Local native build + install (`expo run:android`) |
 | `npm run ios` | Same for iOS (deferred, no iOS config exists) |
 | `npm run web` | Web dev server — partial support only |
-| `npm run lint` | `expo lint` (ESLint 9 flat config) |
+| `npm run lint` | `eslint src` (ESLint 9 flat config) |
 | `npm run typecheck` | `tsc --noEmit`, strict |
 | `npm run preflight` | Pre-launch gate: env vars, EAS cloud env, secret leaks, build profiles, typecheck + lint |
 | `npm run reset-project` | ⚠️ Stock template script. Deletes `src/` and `scripts/`. **Do not run.** |

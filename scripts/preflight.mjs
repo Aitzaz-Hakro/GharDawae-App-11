@@ -178,7 +178,7 @@ else fail(".env is NOT git-ignored — it holds secrets");
 section("Code health");
 for (const [label, cmd] of [
   ["typecheck (tsc --noEmit)", "npx tsc --noEmit"],
-  ["lint (expo lint)", "npx expo lint"],
+  ["lint (eslint src)", "npx eslint src"],
 ]) {
   const res = run(cmd);
   if (res.ok) ok(label);
