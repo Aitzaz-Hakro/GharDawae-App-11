@@ -188,6 +188,36 @@ _Last updated: 2026-09-26_
   Uninstall the dev build before installing a preview APK (different signing).
 - **Status:** 🟡
 
+### Camera + image picker (expo-camera, expo-image-picker) · M3
+- **What:** `expo-camera` renders `<CameraView>` (the live preview) and
+  `takePictureAsync()` returns a photo at a temporary `uri`. `expo-image-picker`
+  opens the system gallery via `launchImageLibraryAsync()`.
+- **Why here:** camera-first record entry is the core flow; the gallery picker
+  is the fallback for slips already photographed.
+- **Key facts:**
+  - Permissions come from hooks: `useCameraPermissions()` and
+    `ImagePicker.useMediaLibraryPermissions()`. Both return
+    `[response, requestPermission]`.
+  - Only **one camera preview at a time** — unmount it when the screen loses
+    focus, or the next camera screen stays black.
+  - The returned `uri` lives in the **cache** directory, which the OS may purge.
+    Copy it somewhere durable before trusting it.
+- **Status:** 🔴
+
+### File storage (expo-file-system, class API) · M3
+- **What:** the current API is three classes — `File`, `Directory`, `Paths`.
+  `Paths.document` = permanent app storage; `Paths.cache` = purgeable.
+  `new File(Paths.document, "photos", "x.jpg")`, then `.create()`, `.copy()`,
+  `.move()`, `.delete()`, `.exists`.
+- **Why here:** prescription photos must outlive the camera's temp file.
+- **Gotcha:** the old functions (`FileSystem.documentDirectory`, `copyAsync`,
+  `getInfoAsync`…) are **deprecated and throw** from the main entry point. Use
+  the classes, or import from `expo-file-system/legacy` to keep old code alive.
+- **Also:** don't store absolute file URIs in the database — on iOS the app's
+  container path changes between installs. Store the file **name** and rebuild
+  the path at read time.
+- **Status:** 🔴
+
 ### Git / version control
 - **What:** tracks code history, lets you undo, branch, and back up your work.
 - **Why here:** this repo isn't a git repo yet — we should init it early so your
@@ -230,8 +260,37 @@ we use it in code.)_
   `detectSessionInUrl: false` because mobile has no URL bar.
 - **Status:** 🟢
 
-- [ ] Camera access (expo-camera / image-picker)
-- [ ] File system (saving photos on device)
+### Transactions (db.writeTransaction) · M3
+- **What:** a block of writes that succeeds or fails as one unit —
+  `db.writeTransaction(async (tx) => { ... })`, where `tx.execute(...)` is the
+  in-transaction handle. Other devices/screens reading the DB never see a
+  half-finished result.
+- **Why here:** a prescription and its medicines are one logical record. Without
+  a transaction a crash between the two INSERTs leaves an orphan.
+- **Note:** plain `db.execute()` is fine for a single statement.
+- **Status:** 🟡
+
+### Debounced autocomplete · M3
+- **What:** wait ~150 ms after the user stops typing before running the query,
+  and tag each response with the text it was for so a slow reply for an old
+  keystroke can't overwrite a newer one.
+- **Why here:** searching past medicine names on every keystroke is wasteful and
+  can show results that don't match what's on screen.
+- **Status:** 🟡
+
+### Route types (Expo Router typedRoutes) · M3
+- **What:** with `experiments.typedRoutes`, Expo generates
+  `.expo/types/router.d.ts` listing every valid route, so `router.push` typos
+  become type errors. The file is generated and git-ignored.
+- **Gotcha:** a **newly added route file isn't in those types until Metro has
+  run once**. Typecheck fails with "not assignable" on a path that clearly
+  exists — start the dev server and re-run `tsc`.
+- **Status:** 🟡
+
 - [ ] State management (how data flows through the app)
 - [ ] Forms & validation (the fast-entry screen)
+- [x] Camera access (expo-camera / image-picker) · M3
+- [x] File system (saving photos on device) · M3
+- [ ] Photo upload to Supabase Storage (on sync)
+- [ ] Search (SQLite queries across members, records, medicines) · M4
 - _…more as they come up_

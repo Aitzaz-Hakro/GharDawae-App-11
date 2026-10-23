@@ -276,6 +276,62 @@ _First entry lands when we start M0/M1._
   `3c5fe40e-c764-434b-893e-358349cd13ff` @ commit `78ba5be` —
   https://expo.dev/accounts/aitzaz_dev/projects/ghar-dawae/builds/3c5fe40e-c764-434b-893e-358349cd13ff
 
+### M3 — Records (camera-first add + visit history) · 2026-10-08
+- **What it does:** a manager can photograph a prescription slip, type the
+  doctor/date/diagnosis, add any number of medicines, and later browse a
+  member's visit history and open any record. Works fully offline.
+- **Files:**
+  - `src/lib/records.ts` — prescriptions + medicines data access. Atomic
+    create (`writeTransaction` so a record never lands without its medicines),
+    ordered reads, delete, plus the two fast-entry queries (`recentDoctors`,
+    `medicineSuggestions`) and date helpers (`today`, `parseDateInput`,
+    `formatDateInput`, `formatVisitDate`).
+  - `src/lib/photo.ts` — `savePhoto` / `photoUri` / `deletePhoto` /
+    `replacePhoto` on the class-based `expo-file-system` API (`File`,
+    `Directory`, `Paths`).
+  - `src/lib/uuid.ts` — shared id generator (was duplicated in `family.ts`).
+  - `src/components/RecordForm.tsx` — the shared form. Owns photo, doctor,
+    date, diagnosis, medicine rows, notes, and the fast-entry affordances.
+  - `src/app/(main)/record/camera.tsx` — `CameraView` capture, gallery
+    fallback, permission gate.
+  - `src/app/(main)/record/new.tsx` — resolves the member, mounts the form.
+  - `src/app/(main)/record/[id].tsx` — record detail + delete.
+  - `src/app/(main)/member/[id].tsx` — rewritten: visit-history list.
+- **Key decisions:**
+  - **Photo naming = record id.** The form mints the record's uuid *before*
+    saving, names the photo file after it, then inserts the row with that same
+    id. The photo and its record can't drift apart, and no second UPDATE is
+    needed. (`NewPrescription.id` is optional for this reason.)
+  - **Store the file NAME, not the URI.** iOS app-container paths contain a
+    UUID that changes on reinstall; an absolute path saved today dies tomorrow.
+    The directory is re-derived at read time via `photoUri()`.
+  - **Copy out of cache.** Both the camera and the image picker return URIs in
+    the purgeable cache directory, so every image is copied into
+    `Paths.document/photos` before its URI is trusted.
+  - **Camera pushes the shot to the form** (`router.replace` with a `photoUri`
+    param). If the form were mounted first and the shot kept in screen state, a
+    capture-then-back-out would lose the photo.
+  - **Camera preview mounts only while focused** (`useFocusEffect`), because
+    only one camera preview may run at a time and RN keeps screens mounted.
+  - **Two queries, not 1+N,** for member history: load prescriptions, then
+    batch-load medicines with `IN (...)`.
+  - **Autocomplete responses are tagged with their query.** A slow response for
+    an earlier keystroke can't render under a newer one.
+- **Deps (native — needed a rebuild):** `expo-camera`, `expo-image-picker`,
+  `expo-file-system`, `@react-native-community/datetimepicker`.
+- **Gotchas:**
+  - Expo Router route types are generated into `.expo/types/router.d.ts`; new
+    route files don't typecheck until Metro has run once (`expo start`).
+  - `expo-file-system`'s `documentDirectory`/`copyAsync` etc. are deprecated and
+    **throw** from the main entry — use `File`/`Directory`/`Paths`.
+  - Android's date picker dismisses itself and may report no date; only keep the
+    picker open on iOS.
+  - `react-hooks/set-state-in-effect` (lint, React Compiler rules) rejects
+    `setState` in an effect body — derive instead, or set state in the async
+    callback.
+- **Not yet:** photo upload to Supabase Storage on sync (`photo_url` stays
+  null); on-phone verification of the whole flow.
+
 ---
 
 ## 5. Design Approach

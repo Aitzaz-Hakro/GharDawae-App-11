@@ -41,17 +41,18 @@ _Last updated: 2026-09-26_
   (3) standalone preview APK.
 
 ### M3 — Records (the heart) · ~2 weeks (24h)
-- [ ] Camera-first add prescription (open camera → snap → fields)
-- [ ] Structured fields: doctor_name, visit_date (default today), diagnosis, notes
-- [ ] Add medicines (name, dosage, frequency, duration) — many per record
+- [x] Camera-first add prescription (open camera → snap → fields)
+- [x] Structured fields: doctor_name, visit_date (default today), diagnosis, notes
+- [x] Add medicines (name, dosage, frequency, duration) — many per record
 - [ ] Photo save: device filesystem + Supabase Storage on sync
-- [ ] Record detail screen (photo + details)
-- [ ] Member detail (medicine list + visit history)
-- [ ] **Fast-entry UX**: today's date default, recent-doctor suggestions,
+- [x] Record detail screen (photo + details)
+- [x] Member detail (medicine list + visit history)
+- [x] **Fast-entry UX**: today's date default, recent-doctor suggestions,
       medicine autocomplete from past entries, minimal required fields
 - **Done when:** full add→view flow works offline, the core value is real.
-- **Progress:** [x] step 1 — records data layer (`src/lib/records.ts`) + camera/
-  image-picker/file-system deps installed.
+- **Progress:** steps 1–6 built (data layer, add form, camera capture, photo
+  persistence to device, record detail, member visit history). Remaining:
+  photo upload to Supabase Storage on sync (M5-adjacent) and an on-phone test.
 
 ### M4 — Search · ~0.5 week (6h)
 - [ ] Search across members, records, medicines (local SQLite query)
