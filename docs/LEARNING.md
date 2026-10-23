@@ -4,7 +4,7 @@ _A running list of every tool, concept, and technique we use — so you can lear
 as we build. When we hit something new, it gets added here first. If you don't
 know it, we pause and learn before moving on._
 
-_Last updated: 2026-09-26_
+_Last updated: 2026-10-10_
 
 ---
 
@@ -166,6 +166,45 @@ _Last updated: 2026-09-26_
 - **Key config:** `eas.json` development profile: `developmentClient: true`,
   `distribution: "internal"`, `android.buildType: "apk"` (dev builds must be APK,
   not AAB).
+- **THE RULE (cost us two debugging sessions):** once a project has ANY native
+  module, **Expo Go is dead for that project — permanently**. Not a version
+  mismatch, not fixable by SDK alignment. Expo Go is one prebuilt binary holding
+  *its own* fixed set of native modules; it cannot load a native module your
+  project added, because that code isn't in it. The error is misleading — it
+  reads like a broken install:
+  `Base module not found. Did you do a pod install/clear the gradle cache?`
+  That message is about **your project's** native build, so it is nonsense when
+  there is no native build (Expo Go) — nothing to pod install, no gradle cache.
+  Read it as: "this native module isn't in the binary you're running."
+  Native modules in this project: `@op-engineering/op-sqlite` (behind PowerSync),
+  `expo-camera`, `expo-image-picker`, `@react-native-community/datetimepicker`.
+  Test path from here on = the **preview** profile.
+- **Status:** 🟡
+
+### Web is not a supported target for this stack · M2
+- **What:** Expo can run an app in a browser, and it *looks* like it should work
+  here. It cannot. Two hard stops:
+  - `@powersync/react-native` is a **platform-specific adapter for iOS/Android
+    only** — it wraps `@op-engineering/op-sqlite`, a native module with no web
+    implementation. Web needs a different package, `@powersync/web` (currently
+    **beta**), which runs SQLite as WebAssembly in a Web Worker.
+  - `expo-secure-store` **has no web implementation**. Its web build is literally
+    `export default {};`, so `SecureStore.getItemAsync` is `undefined` in a
+    browser. The DB encryption key lives there, so the key path dies too.
+- **Symptoms, and why they mislead:** the module-scope throw happens while Expo
+  Router is still registering routes, so **every** route reports
+  `Route "./x.tsx" is missing the required default export`. The warnings point at
+  eight innocent screen files; the actual fault is one native import at the top
+  of `_layout.tsx`'s import chain. Fix the warnings and nothing changes.
+- **Making web work anyway** would need: `@powersync/web`, `npx @powersync/web
+  copy-assets` into `public/`, a `metro.config.js` setting
+  `resolver.unstable_conditionsByPlatform.web` and rewriting `resolveRequest` to
+  return `{ type: 'empty' }` for `@powersync/react-native` on web, plus
+  platform-split DB files (`.web.ts`). **Declined** — v1 ships Android only
+  (docs/10). Recorded so nobody re-litigates it.
+- **Corollary worth remembering:** "works on device" and "works in a browser"
+  are unrelated questions once native modules are involved. Testing web proves
+  nothing about the app, and a web failure proves nothing is broken.
 - **Status:** 🟡
 
 ### Build profiles: development vs preview vs production · M2
@@ -186,6 +225,11 @@ _Last updated: 2026-09-26_
 - **Gotcha:** a standalone (preview/production) build has a **frozen JS bundle** —
   no hot reload; changes need a rebuild unless EAS Update (OTA) is set up.
   Uninstall the dev build before installing a preview APK (different signing).
+- **Gotcha (costs real money):** a cloud build does **not** read your local
+  `.env`. Its environment comes from EAS environment variables per environment
+  (`eas env:create --environment production`). Get this wrong and the APK
+  installs, launches, and then cannot reach Supabase — with no error that points
+  at the config.
 - **Status:** 🟡
 
 ### Camera + image picker (expo-camera, expo-image-picker) · M3
@@ -306,10 +350,63 @@ we use it in code.)_
   exists — start the dev server and re-run `tsc`.
 - **Status:** 🟡
 
+### Offline search over LIKE · M4
+- **What:** searching members, records and medicines with `WHERE name LIKE ?`.
+  `%` is the wildcard; `?` binds a parameter so user input is never concatenated
+  into SQL.
+- **Gotcha (the real lesson):** `%` and `_` are wildcards *inside the pattern*,
+  and a user can type them. `WHERE name LIKE '%${q}%'` with `q = "%"` matches
+  every row. Escape `\`, `%`, `_` in the term and declare the escape character
+  explicitly:
+  `WHERE name LIKE ? ESCAPE '\'` with the bound term already escaped.
+  A medicine named `Vit_D` otherwise matches a search for `Vit D`.
+- **Also:** finding the medicines for N records is one `IN (...)` query, not one
+  query per record. 1+N queries is the default mistake and it only shows up when
+  a family has real history.
+- **Why here:** the whole point of search is that it works in airplane mode, so
+  it has to be a local query — which means these are the failure modes that
+  matter.
+- **Status:** 🟡
+
+### Sync status listeners (PowerSync) · M6
+- **What:** `db.registerListener({ statusChanged })` fires when the connection
+  state or upload queue changes; `db.currentStatus` reads it now;
+  `db.getUploadQueueStats()` gives the pending-upload count.
+- **Gotcha:** the status object is not cheap to render from — copy the fields you
+  need into local state in the callback rather than reading `db.currentStatus`
+  during render.
+- **Design lesson worth keeping:** "offline" is a normal state for an
+  offline-first app. Surfacing it as an error trains users to ignore the thing
+  that is supposed to warn them. Only a genuine failure gets error styling.
+- **Status:** 🟡
+
+### Privacy policy + consent gate · M5
+- **What:** Play requires a publicly hosted privacy policy for a health app, and
+  a Data Safety form whose answers must match observed behaviour. In-app, the
+  policy is one constant (`PRIVACY_VERSION`, `PRIVACY_SECTIONS`) rendered in one
+  screen, with signup blocked until a consent checkbox is ticked.
+- **Lesson:** keep the policy text in exactly one place. A hosted page and an
+  in-app page that drift apart are a compliance problem, not a docs problem.
+- **Status:** 🟡
+
+### Destructive-action ordering (delete my data) · M5
+- **What:** account deletion removes the cloud copy **first**, then the local
+  database and photo files.
+- **Why that order:** cloud delete is the step that can fail (network, RLS). Fail
+  there and nothing has been removed, so the app can honestly say "nothing was
+  deleted". Delete locally first and a failed cloud call leaves an account whose
+  records are gone from the phone but alive in the cloud — the worst of both.
+- **Also:** a name claim is not a permission check. The delete path goes through
+  supabase-js so RLS scopes every statement to the owner's family; the loop
+  itself never decides what it is allowed to touch.
+- **Status:** 🟡
+
 - [ ] State management (how data flows through the app)
 - [ ] Forms & validation (the fast-entry screen)
 - [x] Camera access (expo-camera / image-picker) · M3
 - [x] File system (saving photos on device) · M3
 - [x] Photo upload to Supabase Storage (on sync) · M3
-- [ ] Search (SQLite queries across members, records, medicines) · M4
+- [x] Search (SQLite queries across members, records, medicines) · M4
+- [x] Sync status / upload queue listeners · M6
+- [x] Consent + hosted privacy policy · M5
 - _…more as they come up_

@@ -154,3 +154,55 @@ export async function addMember(
   );
   return member;
 }
+
+/** Update a member's editable fields. Only the keys present are written. */
+export async function updateMember(
+  id: string,
+  patch: Partial<
+    Pick<
+      Member,
+      "name" | "relation" | "avatar_type" | "avatar_value" | "age" | "gender"
+    >
+  >,
+): Promise<void> {
+  const entries = Object.entries(patch).filter(([, v]) => v !== undefined);
+  if (entries.length === 0) return;
+  const db = await getDatabase();
+  const setSql = entries.map(([col]) => `${col} = ?`).join(", ");
+  await db.execute(`UPDATE members SET ${setSql} WHERE id = ?`, [
+    ...entries.map(([, v]) => v as string | number | null),
+    id,
+  ]);
+}
+
+/** How many prescriptions a member has — used to warn before deleting. */
+export async function countPrescriptions(memberId: string): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getOptional<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM prescriptions WHERE member_id = ?",
+    [memberId],
+  );
+  return row?.n ?? 0;
+}
+
+/** Delete a member and everything under them. Returns local photo file names
+ *  so the caller can clean up the files those records owned. */
+export async function deleteMemberDeep(memberId: string): Promise<string[]> {
+  const db = await getDatabase();
+  const photos = await db.getAll<{ photo_path: string | null }>(
+    `SELECT photo_path FROM prescriptions WHERE member_id = ?`,
+    [memberId],
+  );
+
+  await db.writeTransaction(async (tx) => {
+    await tx.execute(
+      `DELETE FROM medicines WHERE prescription_id IN
+         (SELECT id FROM prescriptions WHERE member_id = ?)`,
+      [memberId],
+    );
+    await tx.execute("DELETE FROM prescriptions WHERE member_id = ?", [memberId]);
+    await tx.execute("DELETE FROM members WHERE id = ?", [memberId]);
+  });
+
+  return photos.map((p) => p.photo_path).filter((p): p is string => !!p);
+}

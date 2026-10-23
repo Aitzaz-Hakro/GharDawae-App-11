@@ -5,18 +5,22 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { signUp } from "@/lib/auth";
+import { PRIVACY_VERSION } from "@/constants/privacy";
 
 export default function SignupScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit() {
@@ -30,6 +34,15 @@ export default function SignupScreen() {
     }
     if (password !== confirm) {
       Alert.alert("Passwords don't match", "Re-enter to confirm.");
+      return;
+    }
+    // Consent is required before creating an account that will hold health
+    // data (docs/08 §5).
+    if (!consent) {
+      Alert.alert(
+        "Consent needed",
+        "Please read and accept how your data is stored before creating an account.",
+      );
       return;
     }
     setBusy(true);
@@ -52,7 +65,10 @@ export default function SignupScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.inner}>
+      <ScrollView
+        contentContainerStyle={styles.inner}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>Create account</Text>
         <Text style={styles.subtitle}>You&apos;ll manage your family&apos;s records</Text>
 
@@ -84,6 +100,27 @@ export default function SignupScreen() {
         />
 
         <Pressable
+          style={styles.consentRow}
+          onPress={() => setConsent((v) => !v)}
+          disabled={busy}
+        >
+          <View style={[styles.checkbox, consent && styles.checkboxOn]}>
+            {consent ? <Text style={styles.checkmark}>✓</Text> : null}
+          </View>
+          <Text style={styles.consentText}>
+            I understand my family&apos;s health records are stored on this phone
+            and backed up to the cloud, and I accept the{" "}
+            <Text
+              style={styles.consentLink}
+              onPress={() => router.push("/(main)/settings/privacy")}
+            >
+              privacy policy
+            </Text>{" "}
+            (v{PRIVACY_VERSION}).
+          </Text>
+        </Pressable>
+
+        <Pressable
           style={[styles.button, busy && styles.buttonDisabled]}
           onPress={onSubmit}
           disabled={busy}
@@ -101,14 +138,14 @@ export default function SignupScreen() {
             Log in
           </Link>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  inner: { flex: 1, justifyContent: "center", padding: 24, gap: 12 },
+  inner: { flexGrow: 1, justifyContent: "center", padding: 24, gap: 12 },
   title: { fontSize: 28, fontWeight: "700", textAlign: "center" },
   subtitle: {
     fontSize: 15,
@@ -133,6 +170,21 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  consentRow: { flexDirection: "row", gap: 10, alignItems: "flex-start", marginTop: 4 },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "#C3C7CE",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  checkboxOn: { backgroundColor: "#208AEF", borderColor: "#208AEF" },
+  checkmark: { color: "#fff", fontSize: 15, fontWeight: "700", lineHeight: 18 },
+  consentText: { flex: 1, fontSize: 13, color: "#60646C", lineHeight: 19 },
+  consentLink: { color: "#208AEF", fontWeight: "600" },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 8 },
   footerText: { color: "#60646C" },
   link: { color: "#208AEF", fontWeight: "600" },
