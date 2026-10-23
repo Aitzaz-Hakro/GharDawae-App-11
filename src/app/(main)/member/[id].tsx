@@ -14,6 +14,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-rou
 import { getDatabase } from "@/lib/powersync/db";
 import { presetEmoji } from "@/constants/avatars";
 import { photoUri } from "@/lib/photo";
+import { usePhotoSource } from "@/lib/use-photo-source";
 import {
   formatVisitDate,
   loadMedicinesFor,
@@ -23,6 +24,41 @@ import {
 import type { Member } from "@/lib/family";
 
 type RecordRow = Prescription & { medicines: Medicine[] };
+
+/**
+ * One visit-history row. Split into its own component because resolving the
+ * photo may need a network call, and hooks can't live in `renderItem`.
+ */
+function RecordCard({ item }: { item: RecordRow }) {
+  const router = useRouter();
+  const uri = usePhotoSource(item.photo_path, item.photo_url);
+
+  return (
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push(`/(main)/record/${item.id}`)}
+    >
+      {uri ? (
+        <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
+      ) : (
+        <View style={[styles.thumb, styles.thumbEmpty]}>
+          <Text style={styles.thumbEmptyText}>Rx</Text>
+        </View>
+      )}
+      <View style={styles.cardBody}>
+        <Text style={styles.cardDate}>{formatVisitDate(item.visit_date)}</Text>
+        <Text style={styles.cardDoctor} numberOfLines={1}>
+          {item.doctor_name || "Doctor not noted"}
+        </Text>
+        <Text style={styles.cardMeds} numberOfLines={2}>
+          {item.medicines.length > 0
+            ? item.medicines.map((m) => m.name).join(", ")
+            : item.diagnosis_note || "No medicines recorded"}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
 
 export default function MemberDetailScreen() {
   const router = useRouter();
@@ -122,37 +158,7 @@ export default function MemberDetailScreen() {
             No prescriptions yet.{"\n"}Tap “Add record” to photograph one.
           </Text>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() => router.push(`/(main)/record/${item.id}`)}
-          >
-            {photoUri(item.photo_path) ? (
-              <Image
-                source={{ uri: photoUri(item.photo_path)! }}
-                style={styles.thumb}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={[styles.thumb, styles.thumbEmpty]}>
-                <Text style={styles.thumbEmptyText}>Rx</Text>
-              </View>
-            )}
-            <View style={styles.cardBody}>
-              <Text style={styles.cardDate}>
-                {formatVisitDate(item.visit_date)}
-              </Text>
-              <Text style={styles.cardDoctor} numberOfLines={1}>
-                {item.doctor_name || "Doctor not noted"}
-              </Text>
-              <Text style={styles.cardMeds} numberOfLines={2}>
-                {item.medicines.length > 0
-                  ? item.medicines.map((m) => m.name).join(", ")
-                  : item.diagnosis_note || "No medicines recorded"}
-              </Text>
-            </View>
-          </Pressable>
-        )}
+        renderItem={({ item }) => <RecordCard item={item} />}
       />
 
       <Pressable

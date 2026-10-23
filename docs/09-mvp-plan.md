@@ -44,15 +44,15 @@ _Last updated: 2026-09-26_
 - [x] Camera-first add prescription (open camera → snap → fields)
 - [x] Structured fields: doctor_name, visit_date (default today), diagnosis, notes
 - [x] Add medicines (name, dosage, frequency, duration) — many per record
-- [ ] Photo save: device filesystem + Supabase Storage on sync
+- [x] Photo save: device filesystem + Supabase Storage on sync
 - [x] Record detail screen (photo + details)
 - [x] Member detail (medicine list + visit history)
 - [x] **Fast-entry UX**: today's date default, recent-doctor suggestions,
       medicine autocomplete from past entries, minimal required fields
 - **Done when:** full add→view flow works offline, the core value is real.
-- **Progress:** steps 1–6 built (data layer, add form, camera capture, photo
-  persistence to device, record detail, member visit history). Remaining:
-  photo upload to Supabase Storage on sync (M5-adjacent) and an on-phone test.
+- **Progress:** all M3 steps built. Photo backup to Supabase Storage is wired
+  but needs `db/storage.sql` run in the Supabase SQL Editor first — see
+  `docs/m3-photo-storage-setup.md`. Remaining: on-phone verification.
 
 ### M4 — Search · ~0.5 week (6h)
 - [ ] Search across members, records, medicines (local SQLite query)

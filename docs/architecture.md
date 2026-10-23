@@ -329,8 +329,47 @@ _First entry lands when we start M0/M1._
   - `react-hooks/set-state-in-effect` (lint, React Compiler rules) rejects
     `setState` in an effect body — derive instead, or set state in the async
     callback.
-- **Not yet:** photo upload to Supabase Storage on sync (`photo_url` stays
-  null); on-phone verification of the whole flow.
+- **Not yet:** on-phone verification of the whole flow.
+
+### M3 Step 2 — Photo backup to Supabase Storage · 2026-10-08
+- **What it does:** local photo files are copied up to the private
+  `prescription-photos` bucket, and the object key is stored in
+  `prescriptions.photo_url`. A reinstalled app (or a second device) can then
+  still show a slip whose local file is gone.
+- **Files:**
+  - `db/storage.sql` — four bucket policies (select/insert/update/delete) on
+    `storage.objects`, scoped by `owns_family((storage.foldername(name))[1])`.
+  - `src/lib/photo-sync.ts` — `uploadPhoto` (reads the file as bytes, uploads
+    with `upsert`, writes `photo_url`), `syncPendingPhotos` (backs up every row
+    with a `photo_path` and no `photo_url`), `signedPhotoUrl`.
+  - `src/lib/use-photo-source.ts` — `usePhotoSource` hook: local file if
+    present, else a signed URL.
+  - `src/lib/powersync/sync.ts` — runs the pending-photo sweep on sign-in and
+    every 60 s.
+  - `docs/m3-photo-storage-setup.md` — setup walkthrough.
+- **Key decisions:**
+  - **Object key = `<family_id>/<record_id>.<ext>`.** The leading family id is
+    what makes the storage policy a one-liner: `storage.foldername(name)[1]`
+    hands the policy the same id the table helpers take.
+  - **Photos are NOT part of the PowerSync stream.** PowerSync moves table rows,
+    not files. Uploads go through the ordinary supabase-js storage client, which
+    is exactly why these RLS policies (not the PowerSync sync rules) are the
+    security boundary for photos.
+  - **Private bucket + signed URLs.** No public URL to store; a short-lived URL
+    is minted per view. The local file is preferred so the common path stays
+    offline.
+  - **Uploads are best-effort and idempotent.** A failure leaves the local file
+    alone and the row is retried on the next sweep; `upsert` makes a retry safe.
+  - **Deleting a record does not delete the uploaded object.** The row that
+    referenced it is gone and the bucket is private, so the orphan is harmless;
+    a sweep can come later. Not worth the complexity in v1.
+- **Gotchas:**
+  - The policies call `owns_family()`/`owns_prescription()`, so `db/rls.sql`
+    must be applied first.
+  - A private bucket with no policies silently fails every upload (RLS denies by
+    default) — a 403 from storage is almost always a missing policy.
+- **ACTION REQUIRED (you):** run `db/storage.sql` in the Supabase SQL Editor.
+- **Not yet:** sweep orphaned objects in the bucket.
 
 ---
 

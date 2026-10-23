@@ -20,7 +20,8 @@ import {
   type Medicine,
   type Prescription,
 } from "@/lib/records";
-import { deletePhoto, photoUri } from "@/lib/photo";
+import { deletePhoto } from "@/lib/photo";
+import { usePhotoSource } from "@/lib/use-photo-source";
 
 export default function RecordDetailScreen() {
   const router = useRouter();
@@ -74,6 +75,12 @@ export default function RecordDetailScreen() {
     );
   }
 
+  // Hooks must run before the early returns below.
+  const uri = usePhotoSource(
+    record?.photo_path ?? null,
+    record?.photo_url ?? null,
+  );
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -92,8 +99,6 @@ export default function RecordDetailScreen() {
       </SafeAreaView>
     );
   }
-
-  const uri = photoUri(record.photo_path);
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>

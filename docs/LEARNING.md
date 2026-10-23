@@ -218,6 +218,25 @@ _Last updated: 2026-09-26_
   the path at read time.
 - **Status:** 🔴
 
+### Supabase Storage (buckets, policies, signed URLs) · M3
+- **What:** file storage alongside the database. A **bucket** is a container;
+  buckets are **private by default**, and a private bucket denies *everything*
+  until you add policies. Access is granted with RLS policies on the
+  `storage.objects` table — the same policy language as the database.
+- **Why here:** prescription photos must survive a reinstall, and photos must
+  never leak between families.
+- **Key facts:**
+  - `storage.foldername(name)[1]` splits the object path, so a key of
+    `<family_id>/<record_id>.jpg` lets a policy check ownership in one line.
+  - A private bucket has no public URL. You mint a **signed URL**
+    (`createSignedUrl`) — scoped to one object, expiring.
+  - Uploads default to upsert behaviour, so the `update` policy matters as much
+    as `insert`.
+  - A 403 from storage almost always means a missing policy, not a bug.
+- **Note:** PowerSync syncs **table rows only** — file uploads are ordinary
+  client calls, so table sync rules and file policies are separate concerns.
+- **Status:** 🔴
+
 ### Git / version control
 - **What:** tracks code history, lets you undo, branch, and back up your work.
 - **Why here:** this repo isn't a git repo yet — we should init it early so your
@@ -291,6 +310,6 @@ we use it in code.)_
 - [ ] Forms & validation (the fast-entry screen)
 - [x] Camera access (expo-camera / image-picker) · M3
 - [x] File system (saving photos on device) · M3
-- [ ] Photo upload to Supabase Storage (on sync)
+- [x] Photo upload to Supabase Storage (on sync) · M3
 - [ ] Search (SQLite queries across members, records, medicines) · M4
 - _…more as they come up_
