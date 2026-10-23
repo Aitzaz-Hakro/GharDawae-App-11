@@ -7,6 +7,7 @@
 // Types mirror src/lib/powersync/schema.ts & docs/06-data-model.md.
 
 import { getDatabase } from "@/lib/powersync/db";
+import { uuid } from "@/lib/uuid";
 
 export type Family = {
   id: string;
@@ -27,15 +28,6 @@ export type Member = {
   gender: "male" | "female" | "other" | null;
   created_at: string;
 };
-
-function uuid(): string {
-  // Simple v4 UUID; sufficient for local row ids.
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 /**
  * Get the manager's family, or null if none exists yet.
