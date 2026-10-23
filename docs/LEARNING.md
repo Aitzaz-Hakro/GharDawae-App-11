@@ -166,6 +166,45 @@ _Last updated: 2026-10-10_
 - **Key config:** `eas.json` development profile: `developmentClient: true`,
   `distribution: "internal"`, `android.buildType: "apk"` (dev builds must be APK,
   not AAB).
+- **THE RULE (cost us two debugging sessions):** once a project has ANY native
+  module, **Expo Go is dead for that project — permanently**. Not a version
+  mismatch, not fixable by SDK alignment. Expo Go is one prebuilt binary holding
+  *its own* fixed set of native modules; it cannot load a native module your
+  project added, because that code isn't in it. The error is misleading — it
+  reads like a broken install:
+  `Base module not found. Did you do a pod install/clear the gradle cache?`
+  That message is about **your project's** native build, so it is nonsense when
+  there is no native build (Expo Go) — nothing to pod install, no gradle cache.
+  Read it as: "this native module isn't in the binary you're running."
+  Native modules in this project: `@op-engineering/op-sqlite` (behind PowerSync),
+  `expo-camera`, `expo-image-picker`, `@react-native-community/datetimepicker`.
+  Test path from here on = the **preview** profile.
+- **Status:** 🟡
+
+### Web is not a supported target for this stack · M2
+- **What:** Expo can run an app in a browser, and it *looks* like it should work
+  here. It cannot. Two hard stops:
+  - `@powersync/react-native` is a **platform-specific adapter for iOS/Android
+    only** — it wraps `@op-engineering/op-sqlite`, a native module with no web
+    implementation. Web needs a different package, `@powersync/web` (currently
+    **beta**), which runs SQLite as WebAssembly in a Web Worker.
+  - `expo-secure-store` **has no web implementation**. Its web build is literally
+    `export default {};`, so `SecureStore.getItemAsync` is `undefined` in a
+    browser. The DB encryption key lives there, so the key path dies too.
+- **Symptoms, and why they mislead:** the module-scope throw happens while Expo
+  Router is still registering routes, so **every** route reports
+  `Route "./x.tsx" is missing the required default export`. The warnings point at
+  eight innocent screen files; the actual fault is one native import at the top
+  of `_layout.tsx`'s import chain. Fix the warnings and nothing changes.
+- **Making web work anyway** would need: `@powersync/web`, `npx @powersync/web
+  copy-assets` into `public/`, a `metro.config.js` setting
+  `resolver.unstable_conditionsByPlatform.web` and rewriting `resolveRequest` to
+  return `{ type: 'empty' }` for `@powersync/react-native` on web, plus
+  platform-split DB files (`.web.ts`). **Declined** — v1 ships Android only
+  (docs/10). Recorded so nobody re-litigates it.
+- **Corollary worth remembering:** "works on device" and "works in a browser"
+  are unrelated questions once native modules are involved. Testing web proves
+  nothing about the app, and a web failure proves nothing is broken.
 - **Status:** 🟡
 
 ### Build profiles: development vs preview vs production · M2
