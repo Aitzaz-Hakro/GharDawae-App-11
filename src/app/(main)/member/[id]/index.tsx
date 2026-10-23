@@ -116,7 +116,19 @@ export default function MemberDetailScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <Stack.Screen
-        options={{ headerShown: true, title: member?.name ?? "Member" }}
+        options={{
+          headerShown: true,
+          title: member?.name ?? "Member",
+          headerRight: () =>
+            member ? (
+              <Pressable
+                onPress={() => router.push(`/(main)/member/${member.id}/edit`)}
+                hitSlop={8}
+              >
+                <Text style={styles.editText}>Edit</Text>
+              </Pressable>
+            ) : null,
+        }}
       />
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -190,6 +202,7 @@ const styles = StyleSheet.create({
   avatarEmoji: { fontSize: 48 },
   name: { fontSize: 24, fontWeight: "700", marginTop: 12 },
   sub: { fontSize: 14, color: "#60646C", marginTop: 4 },
+  editText: { color: "#208AEF", fontWeight: "600", fontSize: 16 },
   empty: {
     textAlign: "center",
     color: "#60646C",

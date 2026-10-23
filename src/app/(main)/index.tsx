@@ -11,7 +11,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 
-import { signOut } from "@/lib/auth";
 import { useAuth } from "@/lib/auth-context";
 import {
   resolveFamily,
@@ -70,10 +69,21 @@ export default function HomeScreen() {
           <Text style={styles.hi}>Family</Text>
           <Text style={styles.familyName}>{family?.name ?? "My Family"}</Text>
         </View>
-        <Pressable onPress={() => signOut()} hitSlop={8}>
-          <Text style={styles.logout}>Log out</Text>
+        <Pressable
+          onPress={() => router.push("/(main)/settings")}
+          hitSlop={8}
+          style={styles.settingsBtn}
+        >
+          <Text style={styles.settingsText}>⚙︎</Text>
         </Pressable>
       </View>
+
+      <Pressable
+        style={styles.searchBar}
+        onPress={() => router.push("/(main)/search")}
+      >
+        <Text style={styles.searchPlaceholder}>🔍  Search medicines or records</Text>
+      </Pressable>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -137,7 +147,17 @@ const styles = StyleSheet.create({
   },
   hi: { fontSize: 13, color: "#60646C" },
   familyName: { fontSize: 24, fontWeight: "700" },
-  logout: { color: "#208AEF", fontWeight: "600" },
+  settingsBtn: { padding: 6 },
+  settingsText: { fontSize: 24 },
+  searchBar: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 10,
+    backgroundColor: "#F0F0F3",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  searchPlaceholder: { color: "#60646C", fontSize: 15 },
   error: { color: "#C0392B", paddingHorizontal: 20, paddingBottom: 8 },
   grid: { paddingHorizontal: 12, paddingBottom: 100 },
   row: { justifyContent: "flex-start" },

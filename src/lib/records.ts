@@ -246,8 +246,7 @@ export async function deletePrescription(id: string): Promise<void> {
 /**
  * Distinct doctor names seen for a member, most recent first — powers the
  * fast-entry "recent doctors" suggestion chips.
- */
-export async function recentDoctors(
+ */export async function recentDoctors(
   memberId: string,
   limit = 6,
 ): Promise<string[]> {

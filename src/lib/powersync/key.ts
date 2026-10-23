@@ -27,3 +27,12 @@ export async function getDbEncryptionKey(): Promise<string> {
   await SecureStore.setItemAsync(KEY_NAME, key);
   return key;
 }
+
+/**
+ * Forget the key. Used by account deletion — without the key the encrypted
+ * database file is unreadable, so this is what actually makes local data gone.
+ * A later launch simply generates a fresh key.
+ */
+export async function clearDbEncryptionKey(): Promise<void> {
+  await SecureStore.deleteItemAsync(KEY_NAME);
+}
